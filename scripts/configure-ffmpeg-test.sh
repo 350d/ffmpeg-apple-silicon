@@ -21,11 +21,15 @@ echo "🧪 Configuring FFmpeg for version test only..."
     --disable-swresample \
     --disable-network \
     --disable-autodetect \
+    --disable-encoders \
+    --disable-decoders \
+    --disable-muxers \
+    --disable-demuxers \
     --enable-ffmpeg
 
 echo "✅ FFmpeg configuration complete!"
 echo "📋 Configuration summary:"
 echo "  - Architecture: ARM64"
 echo "  - PIC enabled: Yes" 
-echo "  - Ultra-minimal build (44 seconds)"
-echo "  - Only ffmpeg binary for version test" 
+echo "  - All codecs/muxers disabled"
+echo "  - Target: fastest possible build" 

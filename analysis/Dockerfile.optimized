@@ -1,0 +1,48 @@
+# Time-Optimized Multi-Stage Build
+# Generated based on build time analysis
+
+FROM --platform=linux/arm64 ubuntu:22.04 AS base-system
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV TZ=UTC
+ENV CFLAGS="-w -O2"
+ENV CXXFLAGS="-w -O2"
+
+# Build environment
+ENV FFMPEG_BUILD_ROOT=/opt/ffmpeg
+ENV SOURCE_DIR=/opt/ffmpeg/source
+ENV PKG_CONFIG_PATH=/opt/ffmpeg/lib/pkgconfig
+
+# System dependencies (baseline)
+RUN apt-get update && apt-get install -y \
+    build-essential curl git cmake ninja-build nasm yasm \
+    pkg-config autoconf automake libtool meson python3 \
+    python3-pip wget ca-certificates && \
+    rm -rf /var/lib/apt/lists/* && \
+    mkdir -p "$FFMPEG_BUILD_ROOT" "$SOURCE_DIR"
+
+WORKDIR $SOURCE_DIR
+
+# === FAST DEPENDENCIES (Combined Layer) ===
+FROM base-system AS fast-deps
+# Building zlib and libiconv... (50.7 s)
+# Building audio codecs (LAME ( Opus s)
+# Building video codecs (x264 ( x265 s)
+# Building image processing (WebP ( OpenJPEG)... s)
+# Building text rendering (FreeType ( FontConfig s)
+# Building video filters (vid.stab ( zimg)... s)
+# Building container formats (libbluray)... (1.0 s)
+# Building SDL2... (1.3 s)
+# Extracting archives... (2.7 s)
+# Configuring FFmpeg... (45.2 s)
+
+# === MEDIUM DEPENDENCIES (Paired Layers) ===
+FROM fast-deps AS medium-deps
+
+# === SLOW DEPENDENCIES (Individual Layers) ===
+FROM medium-deps AS building_all_dependencies...
+# Building all dependencies... (1847.5 s) - Individual layer for optimal caching
+
+FROM medium-deps AS compiling_ffmpeg...
+# Compiling FFmpeg... (892.1 s) - Individual layer for optimal caching
+

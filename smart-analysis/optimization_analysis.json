@@ -1,0 +1,66 @@
+{
+  "summary": {
+    "total_components": 6,
+    "total_layers": 3,
+    "total_build_time": 288.09999999999997,
+    "estimated_cache_efficiency": 0.8
+  },
+  "layers": {
+    "layer_01_slow_\n#14_DONE_6.5s\n\n#15_[10/28]_RUN_echo_": {
+      "component_count": 1,
+      "total_duration": 211.2,
+      "components": [
+        "\n#14 DONE 6.5s\n\n#15 [10/28] RUN echo "
+      ]
+    },
+    "layer_02_medium": {
+      "component_count": 1,
+      "total_duration": 50.7,
+      "components": [
+        "\n#12 DONE 50.7s\n\n#13 [ 8/28] RUN echo "
+      ]
+    },
+    "layer_03_fast_group": {
+      "component_count": 4,
+      "total_duration": 26.2,
+      "components": [
+        "\n#18 DONE 1.0s\n\n#19 [14/28] RUN echo ",
+        "\n#20 DONE 2.7s\n\n#21 [16/28] RUN echo ",
+        "\n#16 DONE 7.8s\n\n#17 [12/28] RUN echo ",
+        "\n#22 DONE 45.2s\n\n#23 [18/28] RUN echo "
+      ]
+    }
+  },
+  "components": [
+    {
+      "name": "\n#12 DONE 50.7s\n\n#13 [ 8/28] RUN echo ",
+      "duration": 50.7,
+      "dependencies": []
+    },
+    {
+      "name": "\n#14 DONE 6.5s\n\n#15 [10/28] RUN echo ",
+      "duration": 211.2,
+      "dependencies": []
+    },
+    {
+      "name": "\n#16 DONE 7.8s\n\n#17 [12/28] RUN echo ",
+      "duration": 6.5,
+      "dependencies": []
+    },
+    {
+      "name": "\n#18 DONE 1.0s\n\n#19 [14/28] RUN echo ",
+      "duration": 10.1,
+      "dependencies": []
+    },
+    {
+      "name": "\n#20 DONE 2.7s\n\n#21 [16/28] RUN echo ",
+      "duration": 7.8,
+      "dependencies": []
+    },
+    {
+      "name": "\n#22 DONE 45.2s\n\n#23 [18/28] RUN echo ",
+      "duration": 1.8,
+      "dependencies": []
+    }
+  ]
+}
