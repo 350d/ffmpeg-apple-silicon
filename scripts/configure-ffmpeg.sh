@@ -29,6 +29,8 @@ export LDFLAGS="$LDFLAGS -L$FFMPEG_BUILD_ROOT/lib"
 export CPPFLAGS="$CPPFLAGS -I$FFMPEG_BUILD_ROOT/include"
 
 # FFmpeg configure command
+echo "🔧 Starting FFmpeg configuration with detailed output..."
+
 ./configure \
   --prefix="$FFMPEG_BUILD_ROOT" \
   --bindir="$BIN_DIR" \
@@ -36,6 +38,8 @@ export CPPFLAGS="$CPPFLAGS -I$FFMPEG_BUILD_ROOT/include"
   --extra-cflags="-I$FFMPEG_BUILD_ROOT/include" \
   --extra-ldflags="-L$FFMPEG_BUILD_ROOT/lib" \
   --extra-libs="-lpthread -lm -lz -liconv" \
+  --enable-logging \
+  --disable-quiet \
   \
   `# License options` \
   --enable-gpl \
@@ -109,6 +113,26 @@ export CPPFLAGS="$CPPFLAGS -I$FFMPEG_BUILD_ROOT/include"
 
 echo "✅ FFmpeg configured successfully!"
 echo "📋 Configuration saved to config.log"
+
+echo ""
+echo "🔨 Starting FFmpeg compilation with progress..."
+
+# Compile with animated progress indicator
+chmod +x /scripts/show-progress.sh 2>/dev/null || chmod +x ../scripts/show-progress.sh 2>/dev/null || true
+
+if command -v /scripts/show-progress.sh >/dev/null 2>&1; then
+    make V=1 -j$(nproc) 2>&1 | /scripts/show-progress.sh "Building FFmpeg"
+elif command -v ../scripts/show-progress.sh >/dev/null 2>&1; then
+    make V=1 -j$(nproc) 2>&1 | ../scripts/show-progress.sh "Building FFmpeg"
+else
+    echo "📦 Compiling FFmpeg..."
+    make -j$(nproc)
+fi
+
+echo "📦 Installing FFmpeg..."
+make install
+
+echo "🎉 FFmpeg build completed successfully!"
 
 # Show configuration summary
 echo ""

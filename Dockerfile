@@ -135,13 +135,12 @@ RUN if [ "$FFMPEG_VERSION" = "master" ]; then \
 
 # Copy FFmpeg configuration script
 COPY scripts/configure-ffmpeg.sh /scripts/
-RUN chmod +x /scripts/configure-ffmpeg.sh
+COPY scripts/show-progress.sh /scripts/
+RUN chmod +x /scripts/configure-ffmpeg.sh /scripts/show-progress.sh
 
 # Build FFmpeg (only this layer rebuilds when config changes)
 WORKDIR $SOURCE_DIR/ffmpeg
-RUN /scripts/configure-ffmpeg.sh && \
-    make -j$(nproc) && \
-    make install
+RUN /scripts/configure-ffmpeg.sh
 
 # Stage 3: Final runtime image
 FROM --platform=linux/arm64 ubuntu:22.04 AS runtime

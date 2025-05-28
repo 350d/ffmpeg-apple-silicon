@@ -25,6 +25,15 @@ echo "🔨 Building FFmpeg dependencies..."
 echo "Build root: $FFMPEG_BUILD_ROOT"
 echo "Source directory: $SOURCE_DIR"
 
+# Progress tracking
+TOTAL_DEPS=20
+CURRENT_DEP=0
+
+progress() {
+    ((CURRENT_DEP++))
+    echo "🔄 Progress: [$CURRENT_DEP/$TOTAL_DEPS] $1"
+}
+
 cd "$SOURCE_DIR"
 
 # Function to build a library
@@ -34,24 +43,24 @@ build_lib() {
     local configure_cmd="$3"
     local cmake_build="$4"
     
-    echo "📦 Building $name..."
+    progress "Building $name..."
     cd "$SOURCE_DIR/$source_dir"
     
     if [[ "$cmake_build" == "true" ]]; then
         # CMake build
         mkdir -p build && cd build
         eval "$configure_cmd"
-        make -j$(nproc)
-        make install
+        make -j$(nproc) >/dev/null 2>&1
+        make install >/dev/null 2>&1
     else
         # Autotools build
         if [[ "$configure_cmd" ]]; then
-            eval "./configure --prefix=$FFMPEG_BUILD_ROOT $configure_cmd"
+            eval "./configure --prefix=$FFMPEG_BUILD_ROOT $configure_cmd" >/dev/null 2>&1
         else
-            ./configure --prefix="$FFMPEG_BUILD_ROOT" --disable-shared --enable-static
+            ./configure --prefix="$FFMPEG_BUILD_ROOT" --disable-shared --enable-static >/dev/null 2>&1
         fi
-        make -j$(nproc)
-        make install
+        make -j$(nproc) >/dev/null 2>&1
+        make install >/dev/null 2>&1
     fi
     
     echo "✅ Completed $name"
@@ -72,22 +81,22 @@ build_lib "FLAC" "flac-*" "--disable-shared --enable-static --disable-doxygen-do
 build_lib "x264" "x264" "--enable-static --enable-pic --disable-cli"
 
 # x265 (special CMake handling)
-echo "📦 Building x265..."
+progress "Building x265..."
 cd "$SOURCE_DIR/x265_"*/build/linux
 cmake -G "Unix Makefiles" \
     -DCMAKE_INSTALL_PREFIX="$FFMPEG_BUILD_ROOT" \
     -DENABLE_SHARED=OFF \
     -DENABLE_CLI=OFF \
     -DHIGH_BIT_DEPTH=ON \
-    ../../source
-make -j$(nproc)
-make install
+    ../../source >/dev/null 2>&1
+make -j$(nproc) >/dev/null 2>&1
+make install >/dev/null 2>&1
 echo "✅ Completed x265"
 
 build_lib "libvpx" "libvpx" "--disable-shared --enable-static --disable-examples --disable-unit-tests --enable-vp9-highbitdepth --as=yasm"
 
 # AOM (CMake)
-echo "📦 Building AOM..."
+progress "Building AOM..."
 cd "$SOURCE_DIR/aom"
 mkdir -p build && cd build
 cmake .. \
@@ -96,22 +105,22 @@ cmake .. \
     -DENABLE_EXAMPLES=0 \
     -DENABLE_TOOLS=0 \
     -DENABLE_TESTS=0 \
-    -DENABLE_DOCS=0
-make -j$(nproc)
-make install
+    -DENABLE_DOCS=0 >/dev/null 2>&1
+make -j$(nproc) >/dev/null 2>&1
+make install >/dev/null 2>&1
 echo "✅ Completed AOM"
 
 # SVT-AV1 (CMake)
-echo "📦 Building SVT-AV1..."
+progress "Building SVT-AV1..."
 cd "$SOURCE_DIR/SVT-AV1"
 mkdir -p build && cd build
 cmake .. \
     -DCMAKE_INSTALL_PREFIX="$FFMPEG_BUILD_ROOT" \
     -DCMAKE_BUILD_TYPE=Release \
     -DBUILD_DEC=OFF \
-    -DBUILD_SHARED_LIBS=OFF
-make -j$(nproc)
-make install
+    -DBUILD_SHARED_LIBS=OFF >/dev/null 2>&1
+make -j$(nproc) >/dev/null 2>&1
+make install >/dev/null 2>&1
 echo "✅ Completed SVT-AV1"
 
 # Image formats
