@@ -50,3 +50,67 @@ modules.order
 Module.symvers
 Mkfile.old
 dkms.conf
+
+# FFmpeg build artifacts
+ffmpeg-build*/
+source/
+build/
+bin/
+lib/
+include/
+share/
+
+# Temporary files
+*.tmp
+*.temp
+transforms.trf
+*.log
+
+# Archives
+*.tar.gz
+*.tar.xz
+*.tar.bz2
+*.zip
+
+# macOS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Compiled binaries
+ffmpeg
+ffprobe
+ffplay
+ffmpeg-*
+
+# Package files
+*.deb
+*.rpm
+*.dmg
+*.pkg
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Test files
+test_*.mp4
+test.mp3
+test.opus
+test.ogg
+test.flac
+test.srt
+probe_output.json
+test_summary.md

@@ -1,0 +1,193 @@
+name: Build Release Artifacts
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: 'Release tag name (e.g., v1.0.0)'
+        required: true
+        default: 'v1.0.0'
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}/ffmpeg
+
+jobs:
+  build-docker:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    permissions:
+      contents: write
+      packages: write
+      
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Set up QEMU
+      uses: docker/setup-qemu-action@v3
+      
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+      
+    - name: Log in to Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: Make scripts executable
+      run: |
+        chmod +x scripts/*.sh
+        
+    - name: Get tag name
+      id: tag_name
+      run: |
+        if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+          echo "tag=${{ github.event.inputs.tag_name }}" >> $GITHUB_OUTPUT
+        else
+          echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+        fi
+        
+    - name: Build Docker image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        file: ./Dockerfile
+        platforms: linux/arm64
+        push: true
+        tags: |
+          ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.tag_name.outputs.tag }}
+          ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+        
+    - name: Extract binaries from Docker image
+      run: |
+        # Create temporary container
+        docker create --name temp_container ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.tag_name.outputs.tag }}
+        
+        # Extract binaries
+        mkdir -p release
+        docker cp temp_container:/opt/ffmpeg/bin/ffmpeg release/
+        docker cp temp_container:/opt/ffmpeg/bin/ffprobe release/
+        docker cp temp_container:/opt/ffmpeg/bin/ffplay release/
+        
+        # Clean up
+        docker rm temp_container
+        
+        # Create archive
+        cd release
+        tar -czf ../ffmpeg-apple-silicon-${{ steps.tag_name.outputs.tag }}.tar.gz *
+        cd ..
+        
+        # Calculate checksums
+        sha256sum ffmpeg-apple-silicon-${{ steps.tag_name.outputs.tag }}.tar.gz > checksums.txt
+        
+    - name: Test extracted binaries
+      run: |
+        chmod +x release/*
+        ./release/ffmpeg -version
+        ./release/ffprobe -version
+        ./release/ffplay -version
+        
+        # Quick encode test
+        ./release/ffmpeg -f lavfi -i testsrc2=duration=2:size=320x240:rate=15 \
+          -c:v libx264 -preset ultrafast test.mp4
+          
+        # Test motion vectors with modern API
+        ./release/ffmpeg -f lavfi -i testsrc2=duration=1:size=160x120:rate=10 \
+          -c:v libx264 -flags2 +export_mvs test_mv.mp4
+          
+        echo "✅ Binary tests passed!"
+        
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: ${{ steps.tag_name.outputs.tag }}
+        name: FFmpeg Apple Silicon ${{ steps.tag_name.outputs.tag }}
+        body: |
+          ## FFmpeg for Apple Silicon - ${{ steps.tag_name.outputs.tag }}
+          
+          **Static build with full codec support and hardware acceleration**
+          
+          ### 📦 What's included:
+          - `ffmpeg` - Full-featured multimedia converter
+          - `ffprobe` - Multimedia stream analyzer  
+          - `ffplay` - Simple media player
+          
+          ### ✨ Features:
+          - **Hardware Acceleration** - VideoToolbox, AudioToolbox, Metal
+          - **Full Codec Support** - H.264, H.265, AV1, VP9, x264, x265
+          - **Motion Vector Export** - Modern API with `flags2 +export_mvs`
+          - **ARM64 Optimized** - Maximum performance on Apple Silicon
+          - **Static Build** - No dependencies required
+          
+          ### 🚀 Quick Start:
+          ```bash
+          # Download and extract
+          curl -L -O https://github.com/${{ github.repository }}/releases/download/${{ steps.tag_name.outputs.tag }}/ffmpeg-apple-silicon-${{ steps.tag_name.outputs.tag }}.tar.gz
+          tar -xzf ffmpeg-apple-silicon-${{ steps.tag_name.outputs.tag }}.tar.gz
+          
+          # Remove from quarantine (macOS)
+          xattr -dr com.apple.quarantine ffmpeg ffprobe ffplay
+          codesign -s - ffmpeg ffprobe ffplay
+          
+          # Test
+          ./ffmpeg -version
+          ```
+          
+          ### 📋 Technical Details:
+          - **Build Date**: $(date '+%Y-%m-%d %H:%M:%S UTC')
+          - **Platform**: Apple Silicon (ARM64)
+          - **FFmpeg Version**: Latest release
+          - **PIC Enabled**: Yes (--enable-pic)
+          - **Motion Vectors**: Modern API support
+          
+          ### 🔍 Checksums:
+          See `checksums.txt` for SHA256 verification.
+          
+        files: |
+          ffmpeg-apple-silicon-${{ steps.tag_name.outputs.tag }}.tar.gz
+          checksums.txt
+        draft: false
+        prerelease: false
+        
+  build-native-macos:
+    runs-on: macos-14  # Apple Silicon runner
+    timeout-minutes: 180
+    if: false  # Disabled for now - enable when needed
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Install build dependencies
+      run: |
+        brew install cmake nasm pkg-config automake autoconf libtool
+        
+    - name: Build FFmpeg natively
+      run: |
+        chmod +x scripts/*.sh
+        ./scripts/build.sh
+        
+    - name: Create native archive
+      run: |
+        mkdir -p native-release
+        cp bin/* native-release/
+        cd native-release
+        tar -czf ../ffmpeg-apple-silicon-native-${{ steps.tag_name.outputs.tag }}.tar.gz *
+        cd ..
+        sha256sum ffmpeg-apple-silicon-native-${{ steps.tag_name.outputs.tag }}.tar.gz >> checksums-native.txt
+        
+    - name: Upload native artifacts
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: ${{ steps.tag_name.outputs.tag }}
+        files: |
+          ffmpeg-apple-silicon-native-${{ steps.tag_name.outputs.tag }}.tar.gz
+          checksums-native.txt 

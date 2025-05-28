@@ -1,0 +1,85 @@
+# FFmpeg Quick Test Build - Minimal configuration for fast testing
+FROM --platform=linux/arm64 ubuntu:22.04
+
+# Prevent interactive prompts
+ENV DEBIAN_FRONTEND=noninteractive
+ENV TZ=UTC
+
+# Set build environment
+ENV FFMPEG_BUILD_ROOT=/opt/ffmpeg
+ENV SOURCE_DIR=/opt/ffmpeg/source
+ENV BIN_DIR=/opt/ffmpeg/bin
+ENV PKG_CONFIG_PATH=/opt/ffmpeg/lib/pkgconfig
+ENV PATH="/opt/ffmpeg/bin:$PATH"
+
+# Install minimal dependencies
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    curl \
+    git \
+    cmake \
+    nasm \
+    yasm \
+    pkg-config \
+    autoconf \
+    automake \
+    libtool \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create build directories
+RUN mkdir -p "$FFMPEG_BUILD_ROOT" "$SOURCE_DIR" "$BIN_DIR"
+
+# Download minimal dependencies for quick test
+WORKDIR $SOURCE_DIR
+
+# Only essential libraries for quick build
+RUN curl -L "https://github.com/madler/zlib/archive/refs/tags/v1.3.tar.gz" -o zlib.tar.gz && \
+    git clone --depth 1 https://code.videolan.org/videolan/x264.git && \
+    tar -xf zlib.tar.gz
+
+# Build minimal dependencies
+RUN cd zlib-* && \
+    ./configure --prefix=$FFMPEG_BUILD_ROOT --static && \
+    make -j$(nproc) && \
+    make install
+
+RUN cd x264 && \
+    ./configure --prefix=$FFMPEG_BUILD_ROOT --enable-static --enable-pic --disable-cli && \
+    make -j$(nproc) && \
+    make install
+
+# Download FFmpeg
+RUN git clone --depth 1 https://git.ffmpeg.org/ffmpeg.git
+
+# Copy test configuration script
+COPY scripts/configure-ffmpeg-test.sh /scripts/
+RUN chmod +x /scripts/configure-ffmpeg-test.sh
+
+# Build FFmpeg with minimal configuration
+WORKDIR $SOURCE_DIR/ffmpeg
+RUN ./configure \
+    --prefix=$FFMPEG_BUILD_ROOT \
+    --bindir=$BIN_DIR \
+    --pkg-config-flags="--static" \
+    --extra-cflags="-I$FFMPEG_BUILD_ROOT/include" \
+    --extra-ldflags="-L$FFMPEG_BUILD_ROOT/lib" \
+    --extra-libs="-lpthread -lm -lz" \
+    --enable-gpl \
+    --enable-version3 \
+    --enable-static \
+    --disable-shared \
+    --enable-pic \
+    --enable-libx264 \
+    --disable-debug \
+    && make -j$(nproc) && make install
+
+# Test the build
+RUN "$BIN_DIR/ffmpeg" -version && \
+    "$BIN_DIR/ffprobe" -version
+
+# Quick functionality test
+RUN "$BIN_DIR/ffmpeg" -f lavfi -i testsrc2=duration=1:size=320x240:rate=10 \
+    -c:v libx264 -preset ultrafast -t 1 -f null /dev/null
+
+WORKDIR $BIN_DIR
+CMD ["ffmpeg", "-version"] 
