@@ -15,26 +15,17 @@ echo "🧪 Configuring FFmpeg for version test only..."
     --enable-static \
     --disable-doc \
     --disable-debug \
-    --disable-htmlpages \
-    --disable-manpages \
-    --disable-podpages \
-    --disable-txtpages \
-    --disable-network \
-    --disable-autodetect \
     --disable-everything \
-    --disable-avfilter \
-    --disable-avformat \
-    --disable-avcodec \
     --disable-avdevice \
     --disable-swscale \
     --disable-swresample \
-    --disable-postproc \
-    --enable-avutil \
+    --disable-network \
+    --disable-autodetect \
     --enable-ffmpeg
 
 echo "✅ FFmpeg configuration complete!"
 echo "📋 Configuration summary:"
 echo "  - Architecture: ARM64"
 echo "  - PIC enabled: Yes" 
-echo "  - Only avutil and ffmpeg binary"
-echo "  - Minimal build for version test" 
+echo "  - Ultra-minimal build (44 seconds)"
+echo "  - Only ffmpeg binary for version test" 
