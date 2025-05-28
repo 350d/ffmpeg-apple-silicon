@@ -34,4 +34,4 @@ echo "  - PIC enabled: Yes"
 echo "  - Minimal components: rawvideo, null, testsrc2"
 echo "  - Target: fastest possible build" 
 
-# Trigger workflow: force run ultra-fast test 
+# Trigger workflow: force run ultra-fast test # Force workflow trigger
