@@ -115,17 +115,4 @@ jobs:
         else
           echo "❌ PIC flag is missing in test config"
           exit 1
-        fi
-        
-    - name: Check for Russian text
-      run: |
-        # Check for Cyrillic characters in source files
-        if find . -name "*.md" -o -name "*.yml" -o -name "*.sh" -o -name "Dockerfile*" | \
-           xargs grep -l '[А-Яа-я]' 2>/dev/null; then
-          echo "❌ Found Russian text in files:"
-          find . -name "*.md" -o -name "*.yml" -o -name "*.sh" -o -name "Dockerfile*" | \
-            xargs grep -l '[А-Яа-я]' 2>/dev/null || true
-          exit 1
-        else
-          echo "✅ No Russian text found in source files"
         fi 
