@@ -5,6 +5,13 @@
 
 set -e
 
+echo "🔧 Debug: Environment check..."
+echo "FFMPEG_BUILD_ROOT=$FFMPEG_BUILD_ROOT"
+echo "SOURCE_DIR=$SOURCE_DIR"
+echo "PWD=$(pwd)"
+echo "USER=$(whoami)"
+echo "PATH=$PATH"
+
 # Suppress all compiler warnings and build noise
 export CFLAGS="-w -O2"
 export CXXFLAGS="-w -O2"
@@ -25,6 +32,12 @@ echo "🔨 Building FFmpeg dependencies..."
 echo "Build root: $FFMPEG_BUILD_ROOT"
 echo "Source directory: $SOURCE_DIR"
 
+echo "🔧 Debug: Checking source directory contents..."
+ls -la "$SOURCE_DIR/" || echo "Failed to list SOURCE_DIR"
+
+echo "🔧 Debug: Checking zlib directories..."
+ls -la "$SOURCE_DIR"/zlib-* || echo "No zlib directories found"
+
 # Progress tracking
 TOTAL_DEPS=20
 CURRENT_DEP=0
@@ -42,6 +55,10 @@ build_lib() {
     local source_dir="$2"
     local configure_cmd="$3"
     local cmake_build="$4"
+    
+    echo "🔧 Debug: Attempting to build $name with pattern '$source_dir'"
+    echo "🔧 Debug: Looking for directories matching: $SOURCE_DIR/$source_dir"
+    ls -la "$SOURCE_DIR"/$source_dir 2>/dev/null || echo "🔧 Debug: No directories found for pattern $source_dir"
     
     progress "Building $name..."
     cd "$SOURCE_DIR/$source_dir"
@@ -65,6 +82,8 @@ build_lib() {
     
     echo "✅ Completed $name"
 }
+
+echo "🔧 Debug: Starting first library build..."
 
 # Core libraries
 build_lib "zlib" "zlib-*" "--static"
