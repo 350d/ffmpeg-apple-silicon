@@ -84,7 +84,7 @@ jobs:
       uses: docker/build-push-action@v5
       with:
         context: .
-        file: ./Dockerfile.quicktest
+        file: ./Dockerfile.test
         platforms: linux/arm64
         push: false
         tags: ffmpeg-version-test:latest
@@ -116,7 +116,7 @@ jobs:
         docker run --rm -i hadolint/hadolint < Dockerfile || echo "Hadolint warnings ignored"
         
         # Check quicktest Dockerfile  
-        docker run --rm -i hadolint/hadolint < Dockerfile.quicktest || echo "Hadolint warnings ignored"
+        docker run --rm -i hadolint/hadolint < Dockerfile.test || echo "Hadolint warnings ignored"
         
         echo "✅ Dockerfile syntax validated"
 
