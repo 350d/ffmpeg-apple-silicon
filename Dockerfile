@@ -53,7 +53,7 @@ RUN curl -L "https://github.com/madler/zlib/archive/refs/tags/v1.3.tar.gz" -o zl
     tar -xzf libiconv.tar.gz && rm libiconv.tar.gz
 
 # Audio codecs (cacheable layer)
-RUN curl -L "https://downloads.sourceforge.net/lame/lame-3.100.tar.gz" -o lame.tar.gz && \
+RUN curl -L "https://downloads.sourceforge.net/project/lame/lame/3.100/lame-3.100.tar.gz" -o lame.tar.gz && \
     curl -L "https://archive.mozilla.org/pub/opus/opus-1.4.tar.gz" -o opus.tar.gz && \
     curl -L "https://downloads.xiph.org/releases/ogg/libogg-1.3.5.tar.gz" -o libogg.tar.gz && \
     curl -L "https://downloads.xiph.org/releases/vorbis/libvorbis-1.3.7.tar.gz" -o libvorbis.tar.gz && \

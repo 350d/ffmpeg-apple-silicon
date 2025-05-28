@@ -1,0 +1,38 @@
+# Stage 3: Video Codecs (Target: ~19 minutes) 
+FROM stage2-audio AS stage3-video
+
+# Continue with same environment  
+WORKDIR $SOURCE_DIR
+
+# Download video codec sources (2-3 minutes)
+RUN echo "🔄 [3/7] Video Codecs Stage (Target: 19min)" && \
+    git clone --depth 1 https://code.videolan.org/videolan/x264.git && \
+    curl -L "https://bitbucket.org/multicoreware/x265/downloads/x265_3.5.tar.gz" -o x265.tar.gz && \
+    tar -xzf x265.tar.gz && rm x265.tar.gz && \
+    echo "📦 Video sources downloaded"
+
+# Build x264 (H.264) - ~8 minutes
+RUN cd x264 && \
+    ./configure --prefix=$FFMPEG_BUILD_ROOT --enable-static --enable-pic --disable-cli && \
+    make -j$(nproc) && make install && \
+    echo "✅ x264 (H.264) built"
+
+# Build x265 (HEVC/H.265) - ~8 minutes
+RUN cd x265_*/build/linux && \
+    cmake -G "Unix Makefiles" \
+        -DCMAKE_INSTALL_PREFIX=$FFMPEG_BUILD_ROOT \
+        -DBUILD_SHARED_LIBS=OFF \
+        -DENABLE_PIC=ON \
+        -DENABLE_CLI=OFF \
+        ../../source && \
+    make -j$(nproc) && make install && \
+    echo "✅ x265 (HEVC) built"
+
+# Create stage marker
+RUN echo "stage3-complete-$(date +%Y%m%d-%H%M)" > /opt/ffmpeg/stage3.marker && \
+    echo "📊 Stage 3: Video codecs completed" && \
+    echo "📈 Libraries: $(ls -1 $FFMPEG_BUILD_ROOT/lib/*.a 2>/dev/null | wc -l)" && \
+    echo "🎬 Video support: H.264, HEVC/H.265"
+
+WORKDIR /opt/ffmpeg
+CMD ["cat", "/opt/ffmpeg/stage3.marker"] 

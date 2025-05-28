@@ -1,0 +1,58 @@
+# Stage 7: FFmpeg Final Build (Target: ~18 minutes)
+FROM stage6-text AS stage7-ffmpeg
+
+# Add build scripts
+COPY scripts/ /scripts/
+RUN chmod +x /scripts/*.sh
+
+# Continue with same environment
+WORKDIR $SOURCE_DIR
+
+# Download remaining utility sources (2-3 minutes)
+RUN echo "🔄 [7/7] FFmpeg Final Stage (Target: 18min)" && \
+    git clone --depth 1 https://github.com/georgmartius/vid.stab.git && \
+    curl -L "https://github.com/sekrit-twc/zimg/archive/refs/tags/release-3.0.5.tar.gz" -o zimg.tar.gz && \
+    tar -xzf zimg.tar.gz && rm zimg.tar.gz && \
+    echo "📦 Utility sources downloaded"
+
+# Build vid.stab - ~3 minutes
+RUN cd vid.stab && \
+    mkdir build && cd build && \
+    cmake -G "Unix Makefiles" \
+        -DCMAKE_INSTALL_PREFIX=$FFMPEG_BUILD_ROOT \
+        -DBUILD_SHARED_LIBS=OFF \
+        .. && \
+    make -j$(nproc) && make install && \
+    echo "✅ vid.stab built"
+
+# Build zimg - ~3 minutes
+RUN cd zimg-* && \
+    ./autogen.sh && \
+    ./configure --prefix=$FFMPEG_BUILD_ROOT --disable-shared --enable-static && \
+    make -j$(nproc) && make install && \
+    echo "✅ zimg built"
+
+# Download and build FFmpeg - ~8 minutes
+RUN echo "📥 Downloading FFmpeg..." && \
+    git clone --depth 1 https://git.ffmpeg.org/ffmpeg.git && \
+    cd ffmpeg && \
+    echo "🔧 Configuring FFmpeg..." && \
+    /scripts/configure-ffmpeg.sh && \
+    echo "🔨 Building FFmpeg..." && \
+    make -j$(nproc) && make install && \
+    echo "✅ FFmpeg built successfully"
+
+# Create final marker
+RUN echo "stage7-complete-$(date +%Y%m%d-%H%M)" > /opt/ffmpeg/stage7.marker && \
+    echo "🎉 Stage 7: FFmpeg build completed!" && \
+    echo "📈 Total libraries: $(ls -1 $FFMPEG_BUILD_ROOT/lib/*.a 2>/dev/null | wc -l)" && \
+    echo "🎬 FFmpeg version: $($FFMPEG_BUILD_ROOT/bin/ffmpeg -version | head -1)" && \
+    echo "💾 Binary size: $(ls -lh $FFMPEG_BUILD_ROOT/bin/ffmpeg | awk '{print $5}')"
+
+# Create entrypoint
+COPY scripts/docker-entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+WORKDIR /opt/ffmpeg
+ENTRYPOINT ["/entrypoint.sh"]
+CMD ["ffmpeg", "-version"] 

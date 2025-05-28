@@ -1,0 +1,43 @@
+# Stage 5: Image Libraries (Target: ~16 minutes)
+FROM stage4-modern AS stage5-image
+
+# Continue with same environment
+WORKDIR $SOURCE_DIR
+
+# Download image library sources (2-3 minutes)
+RUN echo "🔄 [5/7] Image Libraries Stage (Target: 16min)" && \
+    curl -L "https://github.com/webmproject/libwebp/archive/refs/tags/v1.3.2.tar.gz" -o libwebp.tar.gz && \
+    curl -L "https://github.com/uclouvain/openjpeg/archive/refs/tags/v2.5.0.tar.gz" -o openjpeg.tar.gz && \
+    tar -xzf libwebp.tar.gz && rm libwebp.tar.gz && \
+    tar -xzf openjpeg.tar.gz && rm openjpeg.tar.gz && \
+    echo "📦 Image sources downloaded"
+
+# Build libwebp - ~6 minutes
+RUN cd libwebp-* && \
+    ./autogen.sh && \
+    ./configure --prefix=$FFMPEG_BUILD_ROOT \
+        --disable-shared \
+        --enable-static \
+        --disable-dependency-tracking && \
+    make -j$(nproc) && make install && \
+    echo "✅ libwebp built"
+
+# Build OpenJPEG (JPEG 2000) - ~6 minutes
+RUN cd openjpeg-* && \
+    mkdir build && cd build && \
+    cmake -G "Unix Makefiles" \
+        -DCMAKE_INSTALL_PREFIX=$FFMPEG_BUILD_ROOT \
+        -DBUILD_SHARED_LIBS=OFF \
+        -DBUILD_TESTING=OFF \
+        .. && \
+    make -j$(nproc) && make install && \
+    echo "✅ OpenJPEG built"
+
+# Create stage marker
+RUN echo "stage5-complete-$(date +%Y%m%d-%H%M)" > /opt/ffmpeg/stage5.marker && \
+    echo "📊 Stage 5: Image libraries completed" && \
+    echo "📈 Libraries: $(ls -1 $FFMPEG_BUILD_ROOT/lib/*.a 2>/dev/null | wc -l)" && \
+    echo "🖼️ Image support: WebP, JPEG 2000"
+
+WORKDIR /opt/ffmpeg
+CMD ["cat", "/opt/ffmpeg/stage5.marker"] 

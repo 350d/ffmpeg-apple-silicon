@@ -1,0 +1,44 @@
+# Stage 4: Modern Video Codecs (Target: ~18 minutes)
+FROM stage3-video AS stage4-modern
+
+# Continue with same environment
+WORKDIR $SOURCE_DIR
+
+# Download modern codec sources (2-3 minutes)
+RUN echo "🔄 [4/7] Modern Video Codecs Stage (Target: 18min)" && \
+    git clone --depth 1 https://chromium.googlesource.com/webm/libvpx.git && \
+    git clone --depth 1 https://aomedia.googlesource.com/aom.git && \
+    echo "📦 Modern codec sources downloaded"
+
+# Build libvpx (VP8/VP9) - ~8 minutes
+RUN cd libvpx && \
+    ./configure --prefix=$FFMPEG_BUILD_ROOT \
+        --enable-static \
+        --disable-shared \
+        --enable-pic \
+        --disable-examples \
+        --disable-unit-tests && \
+    make -j$(nproc) && make install && \
+    echo "✅ libvpx (VP8/VP9) built"
+
+# Build AOM (AV1) - ~7 minutes
+RUN cd aom && \
+    mkdir build && cd build && \
+    cmake -G "Unix Makefiles" \
+        -DCMAKE_INSTALL_PREFIX=$FFMPEG_BUILD_ROOT \
+        -DBUILD_SHARED_LIBS=OFF \
+        -DENABLE_TESTS=OFF \
+        -DENABLE_EXAMPLES=OFF \
+        -DENABLE_DOCS=OFF \
+        .. && \
+    make -j$(nproc) && make install && \
+    echo "✅ AOM (AV1) built"
+
+# Create stage marker
+RUN echo "stage4-complete-$(date +%Y%m%d-%H%M)" > /opt/ffmpeg/stage4.marker && \
+    echo "📊 Stage 4: Modern video codecs completed" && \
+    echo "📈 Libraries: $(ls -1 $FFMPEG_BUILD_ROOT/lib/*.a 2>/dev/null | wc -l)" && \
+    echo "🌐 Modern support: VP8, VP9, AV1"
+
+WORKDIR /opt/ffmpeg
+CMD ["cat", "/opt/ffmpeg/stage4.marker"] 
