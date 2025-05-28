@@ -14,6 +14,7 @@ echo "🧪 Configuring FFmpeg for version test only..."
     --disable-shared \
     --enable-static \
     --disable-doc \
+    --disable-debug \
     --disable-htmlpages \
     --disable-manpages \
     --disable-podpages \
@@ -21,6 +22,8 @@ echo "🧪 Configuring FFmpeg for version test only..."
     --disable-network \
     --disable-autodetect \
     --disable-everything \
+    --disable-avfilter \
+    --disable-avformat \
     --enable-ffmpeg
 
 echo "✅ FFmpeg configuration complete!"
@@ -28,4 +31,4 @@ echo "📋 Configuration summary:"
 echo "  - Architecture: ARM64"
 echo "  - PIC enabled: Yes" 
 echo "  - Everything disabled except ffmpeg binary"
-echo "  - Only for version testing" 
+echo "  - No filters, no formats - only version test" 
