@@ -82,7 +82,7 @@ build_lib "x264" "x264" "--enable-static --enable-pic --disable-cli"
 
 # x265 (special CMake handling)
 progress "Building x265..."
-cd "$SOURCE_DIR/x265_"*/build/linux
+cd "$SOURCE_DIR/x265-4.0/build/linux"
 cmake -G "Unix Makefiles" \
     -DCMAKE_INSTALL_PREFIX="$FFMPEG_BUILD_ROOT" \
     -DENABLE_SHARED=OFF \

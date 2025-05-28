@@ -68,7 +68,7 @@ RUN curl -fL "https://downloads.sourceforge.net/project/lame/lame/3.100/lame-3.1
 
 # Video codecs (cacheable layer)
 RUN git clone --depth 1 https://code.videolan.org/videolan/x264.git && \
-    curl -L "https://bitbucket.org/multicoreware/x265/downloads/x265_3.5.tar.gz" -o x265.tar.gz && \
+    curl -fL "https://github.com/ShiftMediaProject/x265/archive/refs/tags/4.0.tar.gz" -o x265.tar.gz && \
     tar -xzf x265.tar.gz && rm x265.tar.gz && \
     git clone --depth 1 https://chromium.googlesource.com/webm/libvpx.git && \
     git clone --depth 1 https://aomedia.googlesource.com/aom.git && \
