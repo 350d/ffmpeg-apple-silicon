@@ -24,11 +24,17 @@ echo "🧪 Configuring FFmpeg for version test only..."
     --disable-everything \
     --disable-avfilter \
     --disable-avformat \
+    --disable-avcodec \
+    --disable-avdevice \
+    --disable-swscale \
+    --disable-swresample \
+    --disable-postproc \
+    --enable-avutil \
     --enable-ffmpeg
 
 echo "✅ FFmpeg configuration complete!"
 echo "📋 Configuration summary:"
 echo "  - Architecture: ARM64"
 echo "  - PIC enabled: Yes" 
-echo "  - Everything disabled except ffmpeg binary"
-echo "  - No filters, no formats - only version test" 
+echo "  - Only avutil and ffmpeg binary"
+echo "  - Minimal build for version test" 
