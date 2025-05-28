@@ -1,0 +1,81 @@
+# Practical 3-Stage Build System
+# More realistic stages for development workflow
+
+# Stage 1: Base Dependencies (Target: ~45 minutes)
+FROM --platform=linux/arm64 ubuntu:22.04 AS stage1-base-deps
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV TZ=UTC
+ENV CFLAGS="-w -O2"
+ENV CXXFLAGS="-w -O2"
+ENV CPPFLAGS="-w"
+ENV LDFLAGS="-w"
+
+# Set build environment
+ENV FFMPEG_BUILD_ROOT=/opt/ffmpeg
+ENV SOURCE_DIR=/opt/ffmpeg/source
+ENV PKG_CONFIG_PATH=/opt/ffmpeg/lib/pkgconfig
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    build-essential curl git cmake ninja-build nasm yasm \
+    pkg-config autoconf automake libtool meson python3 \
+    python3-pip wget ca-certificates && \
+    rm -rf /var/lib/apt/lists/* && \
+    mkdir -p "$FFMPEG_BUILD_ROOT" "$SOURCE_DIR"
+
+# Add build scripts
+COPY scripts/ /scripts/
+RUN chmod +x /scripts/*.sh
+
+WORKDIR $SOURCE_DIR
+
+# Build ALL core libraries in one stage (~45 minutes)
+RUN /scripts/build-dependencies.sh
+
+# Stage marker
+RUN echo "stage1-deps-complete-$(date +%Y%m%d-%H%M)" > /opt/ffmpeg/stage1.marker && \
+    echo "✅ Stage 1: All dependencies built" && \
+    echo "📈 Libraries: $(ls -1 $FFMPEG_BUILD_ROOT/lib/*.a 2>/dev/null | wc -l)"
+
+# Stage 2: FFmpeg Build (Target: ~25 minutes)  
+FROM stage1-base-deps AS stage2-ffmpeg
+
+WORKDIR $SOURCE_DIR
+
+# Download and build FFmpeg
+RUN echo "📥 Downloading FFmpeg..." && \
+    git clone --depth 1 https://git.ffmpeg.org/ffmpeg.git && \
+    cd ffmpeg && \
+    echo "🔧 Configuring FFmpeg..." && \
+    /scripts/configure-ffmpeg.sh && \
+    echo "🔨 Building FFmpeg..." && \
+    make -j$(nproc) && make install && \
+    echo "✅ FFmpeg built successfully"
+
+# Stage marker
+RUN echo "stage2-ffmpeg-complete-$(date +%Y%m%d-%H%M)" > /opt/ffmpeg/stage2.marker && \
+    echo "✅ Stage 2: FFmpeg build completed" && \
+    echo "🎬 FFmpeg version: $($FFMPEG_BUILD_ROOT/bin/ffmpeg -version | head -1)" && \
+    echo "💾 Binary size: $(ls -lh $FFMPEG_BUILD_ROOT/bin/ffmpeg | awk '{print $5}')"
+
+# Stage 3: Final Production Image (Target: ~5 minutes)
+FROM --platform=linux/arm64 ubuntu:22.04 AS stage3-production
+
+# Copy only the built binaries and libraries
+COPY --from=stage2-ffmpeg /opt/ffmpeg /opt/ffmpeg
+COPY scripts/docker-entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+# Install minimal runtime dependencies
+RUN apt-get update && apt-get install -y ca-certificates && \
+    rm -rf /var/lib/apt/lists/*
+
+# Stage marker
+RUN echo "stage3-production-complete-$(date +%Y%m%d-%H%M)" > /opt/ffmpeg/stage3.marker && \
+    echo "✅ Stage 3: Production image ready" && \
+    echo "📦 Image size optimized"
+
+WORKDIR /opt/ffmpeg
+ENTRYPOINT ["/entrypoint.sh"]
+CMD ["ffmpeg", "-version"] 
