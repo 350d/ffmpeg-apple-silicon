@@ -33,3 +33,5 @@ echo "  - Architecture: ARM64"
 echo "  - PIC enabled: Yes" 
 echo "  - All codecs/muxers disabled"
 echo "  - Target: fastest possible build" 
+
+# Trigger workflow: force run ultra-fast test 
