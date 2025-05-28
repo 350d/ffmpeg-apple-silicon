@@ -5,6 +5,12 @@ FROM --platform=linux/arm64 ubuntu:22.04
 ENV DEBIAN_FRONTEND=noninteractive
 ENV TZ=UTC
 
+# Suppress all compiler warnings and build noise
+ENV CFLAGS="-w -O2"
+ENV CXXFLAGS="-w -O2"
+ENV CPPFLAGS="-w"
+ENV LDFLAGS="-w"
+
 # Set build environment
 ENV FFMPEG_BUILD_ROOT=/opt/ffmpeg
 ENV SOURCE_DIR=/opt/ffmpeg/source

@@ -5,6 +5,12 @@
 
 set -e
 
+# Suppress all compiler warnings and build noise
+export CFLAGS="-w -O2"
+export CXXFLAGS="-w -O2"
+export CPPFLAGS="-w"
+export LDFLAGS="-w"
+
 if [[ -z "$FFMPEG_BUILD_ROOT" ]]; then
     echo "Error: FFMPEG_BUILD_ROOT environment variable is not set"
     exit 1
@@ -19,8 +25,8 @@ echo "🔧 Configuring FFmpeg with custom options..."
 
 # Set up environment
 export PKG_CONFIG_PATH="$FFMPEG_BUILD_ROOT/lib/pkgconfig"
-export LDFLAGS="-L$FFMPEG_BUILD_ROOT/lib"
-export CPPFLAGS="-I$FFMPEG_BUILD_ROOT/include"
+export LDFLAGS="$LDFLAGS -L$FFMPEG_BUILD_ROOT/lib"
+export CPPFLAGS="$CPPFLAGS -I$FFMPEG_BUILD_ROOT/include"
 
 # FFmpeg configure command
 ./configure \

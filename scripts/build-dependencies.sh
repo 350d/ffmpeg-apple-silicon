@@ -5,6 +5,12 @@
 
 set -e
 
+# Suppress all compiler warnings and build noise
+export CFLAGS="-w -O2"
+export CXXFLAGS="-w -O2"
+export CPPFLAGS="-w"
+export LDFLAGS="-w"
+
 if [[ -z "$FFMPEG_BUILD_ROOT" ]]; then
     echo "Error: FFMPEG_BUILD_ROOT environment variable is not set"
     exit 1
