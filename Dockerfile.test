@@ -43,41 +43,9 @@ RUN bash -n /scripts/configure-ffmpeg.sh && \
     bash -n /scripts/show-progress.sh && \
     echo "✅ All scripts have valid syntax"
 
-# Quick FFmpeg build with minimal features (--disable-all)
+# Quick FFmpeg build with minimal features using our script
 WORKDIR /tmp/ffmpeg
-RUN echo "🔧 Configuring FFmpeg with minimal features..." && \
-    ./configure \
-    --prefix="$FFMPEG_BUILD_ROOT" \
-    --bindir="$BIN_DIR" \
-    --enable-gpl \
-    --enable-version3 \
-    --enable-static \
-    --disable-shared \
-    --enable-pic \
-    --disable-debug \
-    --disable-doc \
-    --disable-htmlpages \
-    --disable-manpages \
-    --disable-podpages \
-    --disable-txtpages \
-    --disable-network \
-    --disable-autodetect \
-    --disable-everything \
-    --disable-avdevice \
-    --disable-swresample \
-    --disable-swscale \
-    --disable-programs \
-    --enable-ffmpeg \
-    --enable-ffprobe \
-    --enable-protocol=file \
-    --enable-demuxer=rawvideo \
-    --enable-muxer=null \
-    --enable-encoder=rawvideo \
-    --enable-decoder=rawvideo \
-    --enable-filter=testsrc2 \
-    --enable-filter=null \
-    --quiet && \
-    echo "✅ FFmpeg configured successfully"
+RUN /scripts/configure-ffmpeg-test.sh
 
 # Compile (should be very fast with minimal features)
 RUN echo "🔨 Compiling FFmpeg (minimal build)..." && \
