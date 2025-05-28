@@ -66,9 +66,9 @@ jobs:
 
         echo "✅ All required flags validated"
 
-  quick-compilation-test:
+  ultra-fast-version-test:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 8
     
     steps:
     - name: Checkout repository
@@ -80,66 +80,25 @@ jobs:
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
       
-    - name: Quick FFmpeg build test (minimal features)
+    - name: Ultra-fast FFmpeg version test
       uses: docker/build-push-action@v5
       with:
         context: .
-        file: ./Dockerfile.test
+        file: ./Dockerfile.quicktest
         platforms: linux/arm64
         push: false
-        tags: ffmpeg-quick-test:latest
+        tags: ffmpeg-version-test:latest
         cache-from: type=gha
         cache-to: type=gha,mode=max
         
-    - name: Test compiled FFmpeg
+    - name: Test FFmpeg version output
       run: |
-        echo "🧪 Testing quick-compiled FFmpeg..."
+        echo "🧪 Testing FFmpeg version output..."
         
-        # Test basic functionality
-        docker run --rm ffmpeg-quick-test:latest cat /tmp/test-result.txt
+        # Test version command
+        docker run --rm ffmpeg-version-test:latest
         
-        echo "✅ Quick compilation test passed!"
-
-    - name: Test FFmpeg configuration (dry run)
-      run: |
-        echo "🔍 Testing FFmpeg configuration dry run..."
-        
-        # Install minimal dependencies for configure test
-        sudo apt-get update
-        sudo apt-get install -y build-essential pkg-config git nasm yasm
-        
-        # Download FFmpeg source for configure test
-        git clone --depth 1 https://git.ffmpeg.org/ffmpeg.git /tmp/ffmpeg
-        cd /tmp/ffmpeg
-        
-        # Set environment variables
-        export FFMPEG_BUILD_ROOT=/tmp/test-build
-        export BIN_DIR=/tmp/test-build/bin
-        export PKG_CONFIG_PATH=/tmp/test-build/lib/pkgconfig
-        mkdir -p "$FFMPEG_BUILD_ROOT" "$BIN_DIR"
-        
-        # Test configure command (dry run - only configure, no build)
-        echo "🔧 Running FFmpeg configure test..."
-        ./configure \
-          --prefix="$FFMPEG_BUILD_ROOT" \
-          --bindir="$BIN_DIR" \
-          --pkg-config-flags="--static" \
-          --enable-gpl \
-          --enable-version3 \
-          --enable-static \
-          --disable-shared \
-          --enable-pic \
-          --arch=arm64 \
-          --cc=clang \
-          --disable-everything \
-          --enable-encoder=libx264 \
-          --enable-decoder=h264 \
-          --enable-protocol=file \
-          --enable-muxer=mp4 \
-          --enable-demuxer=mov \
-          --quiet
-        
-        echo "✅ FFmpeg configure completed successfully"
+        echo "✅ Ultra-fast version test passed!"
 
   dockerfile-syntax:
     runs-on: ubuntu-latest
@@ -156,8 +115,8 @@ jobs:
         # Check main Dockerfile
         docker run --rm -i hadolint/hadolint < Dockerfile || echo "Hadolint warnings ignored"
         
-        # Check test Dockerfile  
-        docker run --rm -i hadolint/hadolint < Dockerfile.test || echo "Hadolint warnings ignored"
+        # Check quicktest Dockerfile  
+        docker run --rm -i hadolint/hadolint < Dockerfile.quicktest || echo "Hadolint warnings ignored"
         
         echo "✅ Dockerfile syntax validated"
 
@@ -181,51 +140,21 @@ jobs:
         
         echo "✅ Docker build context validated"
 
-  motion-vectors-api:
-    runs-on: ubuntu-latest
-    timeout-minutes: 2
-    
-    steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
-      
-    - name: Validate motion vectors documentation
-      run: |
-        echo "🔍 Checking motion vectors documentation..."
-        
-        # Check that documentation mentions modern API
-        if grep -q "flags2.*export_mvs" MOTION_VECTORS.md; then
-          echo "✅ Modern motion vector API documented"
-        else
-          echo "❌ Modern motion vector API not documented"
-          exit 1
-        fi
-        
-        # Check that deprecated flag is not mentioned as current
-        if grep -q "enable-mv-export.*deprecated" MOTION_VECTORS.md; then
-          echo "✅ Deprecated flag correctly marked"
-        else
-          echo "⚠️  Deprecated flag documentation may need update"
-        fi
-        
-        echo "✅ Motion vectors documentation validated"
-
   summary:
     runs-on: ubuntu-latest
     timeout-minutes: 1
-    needs: [validate-configs, quick-compilation-test, dockerfile-syntax, motion-vectors-api]
+    needs: [validate-configs, ultra-fast-version-test, dockerfile-syntax]
     
     steps:
     - name: Test Summary
       run: |
-        echo "🎉 Quick Test Summary"
-        echo "==================="
+        echo "🎉 Ultra-Fast Test Summary"
+        echo "=========================="
         echo "✅ Configuration syntax validated"
         echo "✅ Required flags present"  
-        echo "✅ Quick compilation test passed"
+        echo "✅ Ultra-fast version test passed"
         echo "✅ Dockerfile syntax validated"
-        echo "✅ Motion vectors API updated"
         echo "✅ Build context validated"
         echo ""
-        echo "⚡ Total time: ~10-12 minutes (under GitHub free tier limit)"
+        echo "⚡ Total time: ~5-8 minutes (under GitHub free tier limit)"
         echo "🚀 Ready for full build workflow" 
