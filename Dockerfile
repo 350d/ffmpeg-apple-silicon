@@ -53,11 +53,13 @@ RUN curl -L "https://github.com/madler/zlib/archive/refs/tags/v1.3.tar.gz" -o zl
     tar -xzf libiconv.tar.gz && rm libiconv.tar.gz
 
 # Audio codecs (cacheable layer)
-RUN curl -L "https://downloads.sourceforge.net/project/lame/lame/3.100/lame-3.100.tar.gz" -o lame.tar.gz && \
-    curl -L "https://archive.mozilla.org/pub/opus/opus-1.4.tar.gz" -o opus.tar.gz && \
-    curl -L "https://downloads.xiph.org/releases/ogg/libogg-1.3.5.tar.gz" -o libogg.tar.gz && \
-    curl -L "https://downloads.xiph.org/releases/vorbis/libvorbis-1.3.7.tar.gz" -o libvorbis.tar.gz && \
-    curl -L "https://downloads.xiph.org/releases/flac/flac-1.4.3.tar.xz" -o flac.tar.xz && \
+# Note: For latest releases, you can use GitHub API:
+# curl -s https://api.github.com/repos/xiph/opus/releases/latest | grep "tarball_url" | cut -d '"' -f 4
+RUN curl -fL "https://downloads.sourceforge.net/project/lame/lame/3.100/lame-3.100.tar.gz" -o lame.tar.gz && \
+    curl -fL "https://github.com/xiph/opus/archive/refs/tags/v1.5.2.tar.gz" -o opus.tar.gz && \
+    curl -fL "https://downloads.xiph.org/releases/ogg/libogg-1.3.5.tar.gz" -o libogg.tar.gz && \
+    curl -fL "https://downloads.xiph.org/releases/vorbis/libvorbis-1.3.7.tar.gz" -o libvorbis.tar.gz && \
+    curl -fL "https://downloads.xiph.org/releases/flac/flac-1.4.3.tar.xz" -o flac.tar.xz && \
     tar -xzf lame.tar.gz && rm lame.tar.gz && \
     tar -xzf opus.tar.gz && rm opus.tar.gz && \
     tar -xzf libogg.tar.gz && rm libogg.tar.gz && \

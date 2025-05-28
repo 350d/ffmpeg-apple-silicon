@@ -72,7 +72,7 @@ build_lib "libiconv" "libiconv-*" "--disable-shared --enable-static"
 
 # Audio codecs
 build_lib "LAME" "lame-*" "--disable-shared --enable-static --disable-dependency-tracking"
-build_lib "Opus" "opus-*" "--disable-shared --enable-static --disable-doc"
+build_lib "Opus" "opus-1.5.2" "--disable-shared --enable-static --disable-doc"
 build_lib "libogg" "libogg-*" "--disable-shared --enable-static"
 build_lib "libvorbis" "libvorbis-*" "--disable-shared --enable-static --with-ogg=$FFMPEG_BUILD_ROOT"
 build_lib "FLAC" "flac-*" "--disable-shared --enable-static --disable-doxygen-docs --disable-xmms-plugin"
