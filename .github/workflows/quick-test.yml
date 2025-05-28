@@ -80,7 +80,7 @@ jobs:
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
       
-    - name: Ultra-fast FFmpeg version test
+    - name: Ultra-fast FFmpeg validation test
       uses: docker/build-push-action@v5
       with:
         context: .
@@ -90,15 +90,16 @@ jobs:
         tags: ffmpeg-version-test:latest
         cache-from: type=gha
         cache-to: type=gha,mode=max
+        load: true
         
-    - name: Test FFmpeg version output
+    - name: Test validation output
       run: |
-        echo "🧪 Testing FFmpeg version output..."
+        echo "🧪 Testing validation output..."
         
-        # Test version command
+        # Run our validation test
         docker run --rm ffmpeg-version-test:latest
         
-        echo "✅ Ultra-fast version test passed!"
+        echo "✅ Ultra-fast validation test passed!"
 
   dockerfile-syntax:
     runs-on: ubuntu-latest
