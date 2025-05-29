@@ -1,4 +1,6 @@
-FROM --platform=linux/arm64 ubuntu:22.04 AS base
+ARG TARGETPLATFORM=linux/arm64
+
+FROM --platform=$TARGETPLATFORM ubuntu:22.04 AS base
 
 # Install minimal build tools
 RUN apt-get update && apt-get install -y \
@@ -27,29 +29,34 @@ RUN echo "🚀 Building fast essential codecs (x264, lame)..." \
     && ./configure --prefix="$FFMPEG_BUILD_ROOT" --disable-shared --enable-static --enable-pic \
     && make -j$(nproc) \
     && make install \
-    && cd .. && rm -rf x264 \
     && echo "✅ x264 completed" \
-    # libmp3lame (MP3 encoder) - small and fast
+    # lame (MP3 encoder)
+    && cd /tmp/build \
     && curl -L "https://downloads.sourceforge.net/project/lame/lame/3.100/lame-3.100.tar.gz" -o lame.tar.gz \
-    && tar -xzf lame.tar.gz && rm lame.tar.gz \
+    && tar -xzf lame.tar.gz \
     && cd lame-3.100 \
     && ./configure --prefix="$FFMPEG_BUILD_ROOT" --disable-shared --enable-static \
     && make -j$(nproc) \
     && make install \
-    && cd .. && rm -rf lame-3.100 \
-    && echo "✅ lame completed"
+    && echo "✅ lame completed" \
+    && cd /tmp/build \
+    && rm -rf x264 lame-3.100 lame.tar.gz
 
-# Build FFmpeg with minimal configuration
+# Copy FFmpeg build script
 COPY scripts/build-ffmpeg.sh /scripts/
-RUN chmod +x /scripts/build-ffmpeg.sh && /scripts/build-ffmpeg.sh
+RUN chmod +x /scripts/build-ffmpeg.sh
 
-# Final stage
-FROM --platform=linux/arm64 ubuntu:22.04 AS final
-RUN apt-get update && apt-get install -y libgomp1 && rm -rf /var/lib/apt/lists/*
-COPY --from=base /opt/ffmpeg/bin/* /usr/local/bin/
+# Build FFmpeg
+RUN /scripts/build-ffmpeg.sh
 
-# Verify installation
-RUN ffmpeg -version
+# Create final minimal image
+FROM --platform=$TARGETPLATFORM ubuntu:22.04
 
-WORKDIR /workspace
+# Copy only the built binaries and libraries
+COPY --from=base /opt/ffmpeg/bin /opt/ffmpeg/bin
+COPY --from=base /opt/ffmpeg/lib /opt/ffmpeg/lib
+
+ENV PATH="/opt/ffmpeg/bin:$PATH"
+ENV LD_LIBRARY_PATH="/opt/ffmpeg/lib:$LD_LIBRARY_PATH"
+
 ENTRYPOINT ["ffmpeg"] 
