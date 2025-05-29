@@ -1,16 +1,19 @@
-name: Build FFmpeg v2.3.1 (Clean Build)
+name: Build FFmpeg v2.3.1 (Clean Build) - DISABLED
 
 on:
-  push:
-    tags:
-      - 'v2.3.1'
-      - 'v2.3.*'
+  # Disabled - replaced by build-ffmpeg-final.yml
   workflow_dispatch:
+    inputs:
+      force_enable:
+        description: 'Force enable this disabled workflow'
+        required: true
+        default: 'no'
 
 jobs:
   build-clean:
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    if: false  # Completely disabled
     
     steps:
     - name: Checkout repository

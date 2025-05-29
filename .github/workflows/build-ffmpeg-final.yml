@@ -1,0 +1,65 @@
+name: Build FFmpeg Final (Ultra Fast)
+
+on:
+  push:
+    tags:
+      - 'v2.3.4'
+      - 'v2.3.[4-9]'
+      - 'v2.[4-9].*'
+  workflow_dispatch:
+
+jobs:
+  build-final:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15  # Reduced to 15 minutes - should complete in 2-5 minutes
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Verify Dockerfile is minimal
+      run: |
+        echo "🔍 Verifying Dockerfile content..."
+        head -10 Dockerfile
+        echo "---"
+        echo "✅ File size: $(wc -l < Dockerfile) lines"
+        if grep -q "build-dependencies.sh" Dockerfile; then
+          echo "❌ ERROR: Old format detected!"
+          exit 1
+        else
+          echo "✅ Minimal Dockerfile confirmed"
+        fi
+      
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+      with:
+        platforms: linux/arm64
+        
+    - name: Build ultra-fast minimal FFmpeg
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        file: ./Dockerfile
+        platforms: linux/arm64
+        push: false
+        load: true
+        build-args: |
+          TARGETPLATFORM=linux/arm64
+        tags: |
+          ffmpeg-final:latest
+          ffmpeg-final:${{ github.ref_name }}
+        no-cache: true  # Force fresh build
+        outputs: type=docker
+        
+    - name: Test FFmpeg binary
+      run: |
+        echo "🧪 Testing FFmpeg binary..."
+        docker run --rm ffmpeg-final:latest ffmpeg -version | head -5
+        echo "✅ FFmpeg binary test completed"
+        
+    - name: Generate build summary
+      run: |
+        echo "🎉 Build completed successfully!"
+        echo "⏱️ Total build time: Fast minimal build"
+        echo "📦 Built-in codecs only (H.264, AAC, MP3)"
+        echo "🚀 No external dependencies = fast builds" 
