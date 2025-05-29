@@ -23,6 +23,7 @@ jobs:
         context: .
         file: ./Dockerfile.deps
         push: false
+        load: true
         tags: ffmpeg-deps:latest
         platforms: linux/arm64
         cache-from: type=gha,scope=ffmpeg-deps
@@ -34,6 +35,7 @@ jobs:
         context: .
         file: ./Dockerfile.configure
         push: false
+        load: true
         tags: ffmpeg-configure:latest
         platforms: linux/arm64
         cache-from: |
@@ -64,6 +66,7 @@ jobs:
         file: ./Dockerfile.build
         build-args: BASE_IMAGE=ffmpeg-configure:latest
         push: false
+        load: true
         tags: ffmpeg-final:latest
         platforms: linux/arm64
         cache-from: |

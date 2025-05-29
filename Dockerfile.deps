@@ -3,27 +3,22 @@ FROM ubuntu:22.04
 # Prevent interactive prompts
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Update package lists and install basic build tools
+# Install all dependencies in one layer for optimal caching
 RUN apt-get update 2>/dev/null && apt-get install -y \
+    # Basic build tools
     build-essential \
     pkg-config \
     curl \
     wget \
     git \
-    && rm -rf /var/lib/apt/lists/*
-
-# Install multimedia libraries and development headers
-RUN apt-get update 2>/dev/null && apt-get install -y \
+    # Multimedia build tools
     nasm \
     yasm \
     cmake \
     autoconf \
     automake \
     libtool \
-    && rm -rf /var/lib/apt/lists/*
-
-# Install codec development libraries
-RUN apt-get update 2>/dev/null && apt-get install -y \
+    # Codec development libraries
     libx264-dev \
     libx265-dev \
     libmp3lame-dev \
@@ -34,10 +29,7 @@ RUN apt-get update 2>/dev/null && apt-get install -y \
     libfdk-aac-dev \
     libfreetype6-dev \
     libfontconfig1-dev \
-    && rm -rf /var/lib/apt/lists/*
-
-# Install additional multimedia dependencies
-RUN apt-get update 2>/dev/null && apt-get install -y \
+    # Additional multimedia dependencies
     libass-dev \
     libtheora-dev \
     libxvidcore-dev \
