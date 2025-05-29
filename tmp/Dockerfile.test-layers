@@ -1,0 +1,50 @@
+FROM --platform=linux/arm64 ubuntu:22.04 AS base
+
+# Install build tools once
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    cmake \
+    git \
+    curl \
+    wget \
+    pkg-config \
+    autoconf \
+    automake \
+    libtool \
+    nasm \
+    yasm \
+    python3 \
+    python3-pip \
+    meson \
+    ninja-build \
+    && rm -rf /var/lib/apt/lists/*
+
+ENV FFMPEG_BUILD_ROOT="/opt/ffmpeg"
+ENV PKG_CONFIG_PATH="$FFMPEG_BUILD_ROOT/lib/pkgconfig"
+ENV PATH="$FFMPEG_BUILD_ROOT/bin:$PATH"
+RUN mkdir -p "$FFMPEG_BUILD_ROOT"
+
+# Test with just x264 to verify concept
+FROM base AS x264
+RUN git clone --depth 1 https://code.videolan.org/videolan/x264.git /tmp/x264 \
+    && cd /tmp/x264 \
+    && ./configure --prefix="$FFMPEG_BUILD_ROOT" --disable-shared --enable-static --enable-pic \
+    && make -j$(nproc) \
+    && make install \
+    && echo "✅ x264 completed"
+
+# Test second layer - libmp3lame
+FROM x264 AS lame
+RUN curl -L "https://downloads.sourceforge.net/project/lame/lame/3.100/lame-3.100.tar.gz" -o lame.tar.gz \
+    && tar -xzf lame.tar.gz && rm lame.tar.gz \
+    && cd lame-3.100 \
+    && ./configure --prefix="$FFMPEG_BUILD_ROOT" --disable-shared --enable-static \
+    && make -j$(nproc) \
+    && make install \
+    && echo "✅ lame completed"
+
+# Final test stage
+FROM lame AS test
+RUN echo "🎉 Test dependencies built successfully!" \
+    && ls -la "$FFMPEG_BUILD_ROOT/lib" \
+    && echo "Libraries: $(ls -1 $FFMPEG_BUILD_ROOT/lib/*.a | wc -l)" 

@@ -1,208 +1,165 @@
-# Stage 1: Build dependencies (cacheable)
-FROM --platform=linux/arm64 ubuntu:22.04 AS dependencies
+FROM --platform=linux/arm64 ubuntu:22.04 AS base
 
-# Prevent interactive prompts during package installation
-ENV DEBIAN_FRONTEND=noninteractive
-ENV TZ=UTC
-
-# Suppress all compiler warnings and build noise
-ENV CFLAGS="-w -O2"
-ENV CXXFLAGS="-w -O2"
-ENV CPPFLAGS="-w"
-ENV LDFLAGS="-w"
-
-# Set build environment
-ENV FFMPEG_BUILD_ROOT=/opt/ffmpeg
-ENV SOURCE_DIR=/opt/ffmpeg/source
-ENV PKG_CONFIG_PATH=/opt/ffmpeg/lib/pkgconfig
-
-# Install system dependencies
+# Install build tools once
 RUN apt-get update && apt-get install -y \
     build-essential \
-    curl \
-    git \
     cmake \
-    ninja-build \
-    nasm \
-    yasm \
+    git \
+    curl \
+    wget \
     pkg-config \
     autoconf \
     automake \
     libtool \
-    meson \
+    nasm \
+    yasm \
     python3 \
     python3-pip \
-    wget \
-    ca-certificates \
+    meson \
+    ninja-build \
     && rm -rf /var/lib/apt/lists/*
 
-# Create build directories
-RUN mkdir -p "$FFMPEG_BUILD_ROOT" "$SOURCE_DIR"
+ENV FFMPEG_BUILD_ROOT="/opt/ffmpeg"
+ENV PKG_CONFIG_PATH="$FFMPEG_BUILD_ROOT/lib/pkgconfig"
+ENV PATH="$FFMPEG_BUILD_ROOT/bin:$PATH"
+RUN mkdir -p "$FFMPEG_BUILD_ROOT"
 
-# Download and build dependencies script
-COPY scripts/build-dependencies.sh /scripts/
-RUN chmod +x /scripts/build-dependencies.sh
+# ================================================================
+# INDIVIDUAL DEPENDENCY LAYERS (each gets cached separately)
+# ================================================================
 
-# Download and extract source packages
-WORKDIR $SOURCE_DIR
+# Layer 1: x264 (H.264 encoder)
+FROM base AS x264
+RUN git clone --depth 1 https://code.videolan.org/videolan/x264.git /tmp/x264 \
+    && cd /tmp/x264 \
+    && ./configure --prefix="$FFMPEG_BUILD_ROOT" --disable-shared --enable-static --enable-pic \
+    && make -j$(nproc) \
+    && make install \
+    && echo "✅ x264 completed"
 
-# Core libraries (cacheable layer)
-RUN curl -L "https://github.com/madler/zlib/archive/refs/tags/v1.3.tar.gz" -o zlib.tar.gz && \
-    curl -L "https://ftp.gnu.org/pub/gnu/libiconv/libiconv-1.17.tar.gz" -o libiconv.tar.gz && \
-    tar -xzf zlib.tar.gz && rm zlib.tar.gz && \
-    tar -xzf libiconv.tar.gz && rm libiconv.tar.gz
+# Layer 2: x265 (H.265 encoder)
+FROM x264 AS x265
+RUN git clone --depth 1 https://bitbucket.org/multicoreware/x265_git.git /tmp/x265 \
+    && cd /tmp/x265/build/linux \
+    && cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX="$FFMPEG_BUILD_ROOT" -DENABLE_SHARED=OFF ../../source \
+    && make -j$(nproc) \
+    && make install \
+    && echo "✅ x265 completed"
 
-# Audio codecs (cacheable layer)
-# Note: For latest releases, you can use GitHub API:
-# curl -s https://api.github.com/repos/xiph/opus/releases/latest | grep "tarball_url" | cut -d '"' -f 4
-RUN curl -fL "https://downloads.sourceforge.net/project/lame/lame/3.100/lame-3.100.tar.gz" -o lame.tar.gz && \
-    curl -fL "https://github.com/xiph/opus/archive/refs/tags/v1.5.2.tar.gz" -o opus.tar.gz && \
-    curl -fL "https://downloads.xiph.org/releases/ogg/libogg-1.3.5.tar.gz" -o libogg.tar.gz && \
-    curl -fL "https://downloads.xiph.org/releases/vorbis/libvorbis-1.3.7.tar.gz" -o libvorbis.tar.gz && \
-    curl -fL "https://downloads.xiph.org/releases/flac/flac-1.4.3.tar.xz" -o flac.tar.xz && \
-    tar -xzf lame.tar.gz && rm lame.tar.gz && \
-    tar -xzf opus.tar.gz && rm opus.tar.gz && \
-    tar -xzf libogg.tar.gz && rm libogg.tar.gz && \
-    tar -xzf libvorbis.tar.gz && rm libvorbis.tar.gz && \
-    tar -xJf flac.tar.xz && rm flac.tar.xz
+# Layer 3: libvpx (VP8/VP9 encoder)
+FROM x265 AS libvpx
+RUN git clone --depth 1 https://chromium.googlesource.com/webm/libvpx.git /tmp/libvpx \
+    && cd /tmp/libvpx \
+    && ./configure --prefix="$FFMPEG_BUILD_ROOT" --disable-shared --enable-static --disable-examples --disable-tools --enable-vp9-highbitdepth \
+    && make -j$(nproc) \
+    && make install \
+    && echo "✅ libvpx completed"
 
-# Video codecs (cacheable layer)
-# Use stable releases instead of latest Git to improve Docker layer caching
-RUN curl -fL "https://code.videolan.org/videolan/x264/-/archive/85b5ccea/x264-85b5ccea.tar.gz" -o x264.tar.gz && \
-    curl -fL "https://github.com/ShiftMediaProject/x265/archive/refs/tags/4.0.tar.gz" -o x265.tar.gz && \
-    curl -fL "https://github.com/webmproject/libvpx/archive/refs/tags/v1.15.1.tar.gz" -o libvpx.tar.gz && \
-    curl -fL "https://aomedia.googlesource.com/aom/+archive/refs/tags/v3.11.0.tar.gz" -o aom.tar.gz && \
-    curl -fL "https://github.com/ultravideo/kvazaar/archive/refs/tags/v2.3.1.tar.gz" -o kvazaar.tar.gz && \
-    curl -fL "https://gitlab.com/AOMediaCodec/SVT-AV1/-/archive/v2.3.0/SVT-AV1-v2.3.0.tar.gz" -o svt-av1.tar.gz && \
-    tar -xzf x264.tar.gz && rm x264.tar.gz && \
-    tar -xzf x265.tar.gz && rm x265.tar.gz && \
-    tar -xzf libvpx.tar.gz && rm libvpx.tar.gz && \
-    mkdir -p aom && tar -xzf aom.tar.gz -C aom && rm aom.tar.gz && \
-    tar -xzf kvazaar.tar.gz && rm kvazaar.tar.gz && \
-    tar -xzf svt-av1.tar.gz && rm svt-av1.tar.gz
+# Layer 4: AOM (AV1 encoder)
+FROM libvpx AS aom
+RUN git clone --depth 1 https://aomedia.googlesource.com/aom /tmp/aom \
+    && cd /tmp/aom \
+    && mkdir build && cd build \
+    && cmake -DCMAKE_INSTALL_PREFIX="$FFMPEG_BUILD_ROOT" -DBUILD_SHARED_LIBS=OFF -DENABLE_DOCS=OFF -DENABLE_TESTS=OFF .. \
+    && make -j$(nproc) \
+    && make install \
+    && echo "✅ aom completed"
 
-# Image formats (cacheable layer)
-RUN curl -L "https://github.com/webmproject/libwebp/archive/refs/tags/v1.3.2.tar.gz" -o libwebp.tar.gz && \
-    curl -L "https://github.com/uclouvain/openjpeg/archive/refs/tags/v2.5.0.tar.gz" -o openjpeg.tar.gz && \
-    tar -xzf libwebp.tar.gz && rm libwebp.tar.gz && \
-    tar -xzf openjpeg.tar.gz && rm openjpeg.tar.gz
+# Layer 5: SVT-AV1 (Intel AV1 encoder)
+FROM aom AS svtav1
+RUN git clone --depth 1 https://gitlab.com/AOMediaCodec/SVT-AV1.git /tmp/svt-av1 \
+    && cd /tmp/svt-av1 \
+    && mkdir build && cd build \
+    && cmake -DCMAKE_INSTALL_PREFIX="$FFMPEG_BUILD_ROOT" -DBUILD_SHARED_LIBS=OFF .. \
+    && make -j$(nproc) \
+    && make install \
+    && echo "✅ svt-av1 completed"
 
-# Text rendering (cacheable layer)
-RUN curl -L "https://download.savannah.gnu.org/releases/freetype/freetype-2.13.2.tar.xz" -o freetype.tar.xz && \
-    curl -L "https://www.freedesktop.org/software/fontconfig/release/fontconfig-2.14.2.tar.xz" -o fontconfig.tar.xz && \
-    curl -L "https://github.com/fribidi/fribidi/releases/download/v1.0.13/fribidi-1.0.13.tar.xz" -o fribidi.tar.xz && \
-    curl -L "https://github.com/harfbuzz/harfbuzz/releases/download/8.3.0/harfbuzz-8.3.0.tar.xz" -o harfbuzz.tar.xz && \
-    curl -L "https://github.com/libass/libass/releases/download/0.17.1/libass-0.17.1.tar.xz" -o libass.tar.xz && \
-    tar -xJf freetype.tar.xz && rm freetype.tar.xz && \
-    tar -xJf fontconfig.tar.xz && rm fontconfig.tar.xz && \
-    tar -xJf fribidi.tar.xz && rm fribidi.tar.xz && \
-    tar -xJf harfbuzz.tar.xz && rm harfbuzz.tar.xz && \
-    tar -xJf libass.tar.xz && rm libass.tar.xz
+# Layer 6: libmp3lame (MP3 encoder)
+FROM svtav1 AS lame
+RUN curl -L "https://downloads.sourceforge.net/project/lame/lame/3.100/lame-3.100.tar.gz" -o lame.tar.gz \
+    && tar -xzf lame.tar.gz && rm lame.tar.gz \
+    && cd lame-3.100 \
+    && ./configure --prefix="$FFMPEG_BUILD_ROOT" --disable-shared --enable-static \
+    && make -j$(nproc) \
+    && make install \
+    && echo "✅ lame completed"
 
-# Video processing (cacheable layer)
-RUN curl -fL "https://github.com/georgmartius/vid.stab/archive/refs/tags/v1.1.1.tar.gz" -o vid.stab.tar.gz && \
-    tar -xzf vid.stab.tar.gz && rm vid.stab.tar.gz && \
-    curl -fL "https://github.com/sekrit-twc/zimg/archive/refs/tags/release-3.0.5.tar.gz" -o zimg.tar.gz && \
-    tar -xzf zimg.tar.gz && rm zimg.tar.gz
+# Layer 7: opus (Opus encoder)
+FROM lame AS opus
+RUN git clone --depth 1 https://github.com/xiph/opus.git /tmp/opus \
+    && cd /tmp/opus \
+    && ./autogen.sh \
+    && ./configure --prefix="$FFMPEG_BUILD_ROOT" --disable-shared --enable-static \
+    && make -j$(nproc) \
+    && make install \
+    && echo "✅ opus completed"
 
-# Media containers (cacheable layer)
-RUN curl -fL "https://code.videolan.org/videolan/libbluray/-/archive/1.3.4/libbluray-1.3.4.tar.gz" -o libbluray.tar.gz && \
-    tar -xzf libbluray.tar.gz && rm libbluray.tar.gz
+# Layer 8: libvorbis (Vorbis encoder)
+FROM opus AS vorbis
+RUN git clone --depth 1 https://github.com/xiph/vorbis.git /tmp/vorbis \
+    && cd /tmp/vorbis \
+    && ./autogen.sh \
+    && ./configure --prefix="$FFMPEG_BUILD_ROOT" --disable-shared --enable-static \
+    && make -j$(nproc) \
+    && make install \
+    && echo "✅ vorbis completed"
 
-# SDL for ffplay (cacheable layer)
-RUN curl -L "https://github.com/libsdl-org/SDL/releases/download/release-2.28.5/SDL2-2.28.5.tar.gz" -o sdl2.tar.gz && \
-    tar -xzf sdl2.tar.gz && rm sdl2.tar.gz
+# Layer 9: libass (subtitle rendering)
+FROM vorbis AS libass
+RUN git clone --depth 1 https://github.com/libass/libass.git /tmp/libass \
+    && cd /tmp/libass \
+    && ./autogen.sh \
+    && ./configure --prefix="$FFMPEG_BUILD_ROOT" --disable-shared --enable-static \
+    && make -j$(nproc) \
+    && make install \
+    && echo "✅ libass completed"
 
-# Build all dependencies (heavy cacheable layer)
-RUN /scripts/build-dependencies.sh
+# Layer 10: freetype (font rendering for libass)
+FROM libass AS freetype
+RUN git clone --depth 1 https://gitlab.freedesktop.org/freetype/freetype.git /tmp/freetype \
+    && cd /tmp/freetype \
+    && ./autogen.sh \
+    && ./configure --prefix="$FFMPEG_BUILD_ROOT" --disable-shared --enable-static \
+    && make -j$(nproc) \
+    && make install \
+    && echo "✅ freetype completed"
 
-# Stage 2: FFmpeg build (uses cached dependencies)
-FROM dependencies AS ffmpeg-builder
+# Layer 11: fribidi (text layout for libass)
+FROM freetype AS fribidi
+RUN git clone --depth 1 https://github.com/fribidi/fribidi.git /tmp/fribidi \
+    && cd /tmp/fribidi \
+    && meson setup build --prefix="$FFMPEG_BUILD_ROOT" --default-library=static \
+    && ninja -C build \
+    && ninja -C build install \
+    && echo "✅ fribidi completed"
 
-# Continue suppressing warnings
-ENV CFLAGS="-w -O2"
-ENV CXXFLAGS="-w -O2"
-ENV CPPFLAGS="-w"
-ENV LDFLAGS="-w"
+# ================================================================
+# FFMPEG BUILD STAGE
+# ================================================================
 
-ENV BIN_DIR=/opt/ffmpeg/bin
-ENV PATH="/opt/ffmpeg/bin:$PATH"
-ENV MACOSX_DEPLOYMENT_TARGET=11.0
+FROM fribidi AS ffmpeg-build
+COPY scripts/build-ffmpeg.sh /scripts/
+RUN chmod +x /scripts/build-ffmpeg.sh
 
-# Create bin directory
-RUN mkdir -p "$BIN_DIR"
+# Download and build FFmpeg
+RUN git clone --depth 1 https://git.ffmpeg.org/ffmpeg.git /tmp/ffmpeg \
+    && cd /tmp/ffmpeg \
+    && /scripts/build-ffmpeg.sh
 
-# Download FFmpeg (this layer changes with FFmpeg updates)
-ARG FFMPEG_VERSION=master
-WORKDIR $SOURCE_DIR
-RUN if [ "$FFMPEG_VERSION" = "master" ]; then \
-        git clone --depth 1 https://git.ffmpeg.org/ffmpeg.git; \
-    else \
-        git clone https://git.ffmpeg.org/ffmpeg.git && \
-        cd ffmpeg && \
-        git checkout "$FFMPEG_VERSION"; \
-    fi
+# ================================================================
+# FINAL STAGE - Copy only binaries
+# ================================================================
 
-# Copy FFmpeg configuration script
-COPY scripts/configure-ffmpeg.sh /scripts/
-COPY scripts/show-progress.sh /scripts/
-RUN chmod +x /scripts/configure-ffmpeg.sh /scripts/show-progress.sh
-
-# Build FFmpeg (only this layer rebuilds when config changes)
-WORKDIR $SOURCE_DIR/ffmpeg
-RUN /scripts/configure-ffmpeg.sh
-
-# Stage 3: Final runtime image
-FROM --platform=linux/arm64 ubuntu:22.04 AS runtime
-
-ENV DEBIAN_FRONTEND=noninteractive
-
-# Install minimal runtime dependencies
+FROM ubuntu:22.04 AS final
 RUN apt-get update && apt-get install -y \
-    ca-certificates \
+    libgomp1 \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy built binaries from builder stage
-COPY --from=ffmpeg-builder /opt/ffmpeg/bin /opt/ffmpeg/bin
+COPY --from=ffmpeg-build /opt/ffmpeg/bin/* /usr/local/bin/
 
-# Set up environment
-ENV PATH="/opt/ffmpeg/bin:$PATH"
+# Verify installation
+RUN ffmpeg -version && ffprobe -version
 
-# Strip binaries to reduce size
-RUN strip /opt/ffmpeg/bin/ffmpeg /opt/ffmpeg/bin/ffprobe /opt/ffmpeg/bin/ffplay
-
-# Create package info
-WORKDIR /opt/ffmpeg/bin
-RUN cat > ffmpeg-info.txt << EOF && \
-    echo "FFmpeg static build for ARM64" && \
-    echo "Build date: $(date)" && \
-    echo "FFmpeg version: $(/opt/ffmpeg/bin/ffmpeg -version | head -n1)" && \
-    echo "" && \
-    echo "Included libraries:" && \
-    echo "- x264, x265 (H.264/H.265 encoding)" && \
-    echo "- libvpx (VP8/VP9)" && \
-    echo "- libaom (AV1)" && \
-    echo "- SVT-AV1 (AV1 encoding)" && \
-    echo "- libass (subtitle rendering)" && \
-    echo "- libfreetype, fontconfig (text rendering)" && \
-    echo "- libmp3lame (MP3 encoding)" && \
-    echo "- libopus (Opus audio)" && \
-    echo "- libvorbis (Vorbis audio)" && \
-    echo "- libwebp (WebP images)" && \
-    echo "- vid.stab (video stabilization)" && \
-    echo "- And many more..." \
-EOF
-
-RUN tar -czf ffmpeg-arm64-$(date +%Y%m%d).tar.gz ffmpeg ffprobe ffplay ffmpeg-info.txt
-
-# Test the build
-RUN /opt/ffmpeg/bin/ffmpeg -version && \
-    /opt/ffmpeg/bin/ffprobe -version && \
-    /opt/ffmpeg/bin/ffplay -version
-
-# Set up entrypoint
-COPY scripts/docker-entrypoint.sh /scripts/
-RUN chmod +x /scripts/docker-entrypoint.sh
-
-ENTRYPOINT ["/scripts/docker-entrypoint.sh"]
-CMD ["ffmpeg"] 
+WORKDIR /workspace
+ENTRYPOINT ["ffmpeg"] 

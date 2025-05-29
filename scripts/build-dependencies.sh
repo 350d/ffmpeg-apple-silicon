@@ -12,11 +12,12 @@ echo "PWD=$(pwd)"
 echo "USER=$(whoami)"
 echo "PATH=$PATH"
 
-# Suppress all compiler warnings and build noise
-export CFLAGS="-w -O2"
-export CXXFLAGS="-w -O2"
-export CPPFLAGS="-w"
-export LDFLAGS="-w"
+# Remove global compiler warning suppression - let configure scripts work normally
+# We'll suppress warnings during make phase instead
+# export CFLAGS="-w -O2"
+# export CXXFLAGS="-w -O2"
+# export CPPFLAGS="-w"
+# export LDFLAGS="-w"
 
 if [[ -z "$FFMPEG_BUILD_ROOT" ]]; then
     echo "Error: FFMPEG_BUILD_ROOT environment variable is not set"
@@ -80,6 +81,9 @@ build_lib() {
     progress "Building $name..."
     cd "$SOURCE_DIR/$actual_dir"
     
+    echo "🔧 Debug: Current directory: $(pwd)"
+    echo "🔧 Debug: configure_cmd: $configure_cmd"
+    
     if [[ "$cmake_build" == "true" ]]; then
         # CMake build
         mkdir -p build && cd build
@@ -89,12 +93,28 @@ build_lib() {
     else
         # Autotools build
         if [[ "$configure_cmd" ]]; then
-            eval "./configure --prefix=$FFMPEG_BUILD_ROOT $configure_cmd" >/dev/null 2>&1
+            echo "🔧 Debug: Running configure with custom command..."
+            eval "./configure --prefix=$FFMPEG_BUILD_ROOT $configure_cmd" || {
+                echo "❌ Configure failed for $name"
+                return 1
+            }
         else
-            ./configure --prefix="$FFMPEG_BUILD_ROOT" --disable-shared --enable-static >/dev/null 2>&1
+            echo "🔧 Debug: Running configure with default options..."
+            ./configure --prefix="$FFMPEG_BUILD_ROOT" --disable-shared --enable-static || {
+                echo "❌ Configure failed for $name"
+                return 1
+            }
         fi
-        make -j$(nproc) >/dev/null 2>&1
-        make install >/dev/null 2>&1
+        echo "🔧 Debug: Configure completed, starting make..."
+        MAKEFLAGS="-j$(nproc)" make CFLAGS="-w -O2" CXXFLAGS="-w -O2" || {
+            echo "❌ Make failed for $name"
+            return 1
+        }
+        echo "🔧 Debug: Make completed, installing..."
+        make install || {
+            echo "❌ Make install failed for $name"
+            return 1
+        }
     fi
     
     echo "✅ Completed $name"
@@ -103,7 +123,7 @@ build_lib() {
 echo "🔧 Debug: Starting first library build..."
 
 # Core libraries
-build_lib "zlib" "zlib-*" "--static"
+build_lib "zlib" "zlib-*" "--64"
 build_lib "libiconv" "libiconv-*" "--disable-shared --enable-static"
 
 # Audio codecs
