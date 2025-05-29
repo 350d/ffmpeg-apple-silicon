@@ -122,6 +122,7 @@ docker build --platform linux/arm64 -f Dockerfile.build --build-arg BASE_IMAGE=f
 - ✅ **Fast iteration** - configure changes don't rebuild dependencies
 - ✅ **Easy debugging** - test each stage separately
 - ✅ **Motion vectors verification** - tested at each stage
+- ✅ **GitHub Actions cache** - 30x speedup on CI (252s → 8.6s)
 
 ### Download Built Binaries
 ```bash
