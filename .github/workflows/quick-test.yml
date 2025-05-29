@@ -21,6 +21,7 @@ jobs:
   validate-configs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    if: false  # Disabled - uses old Dockerfile.test
     
     steps:
     - name: Checkout repository
