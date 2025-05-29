@@ -1,116 +1,49 @@
-# Prerequisites
-*.d
-
-# Object files
-*.o
-*.ko
-*.obj
-*.elf
-
-# Linker output
-*.ilk
-*.map
-*.exp
-
-# Precompiled Headers
-*.gch
-*.pch
-
-# Libraries
-*.lib
-*.a
-*.la
-*.lo
-
-# Shared objects (inc. Windows DLLs)
-*.dll
-*.so
-*.so.*
-*.dylib
-
-# Executables
-*.exe
-*.out
-*.app
-*.i*86
-*.x86_64
-*.hex
-
-# Debug files
-*.dSYM/
-*.su
-*.idb
-*.pdb
-
-# Kernel Module Compile Results
-*.mod*
-*.cmd
-.tmp_versions/
-modules.order
-Module.symvers
-Mkfile.old
-dkms.conf
-
-# FFmpeg build artifacts
-ffmpeg-build*/
-source/
-build/
-bin/
-lib/
-include/
-share/
-
-# Temporary files
-*.tmp
-*.temp
-transforms.trf
-*.log
-
-# Archives
-*.tar.gz
-*.tar.xz
-*.tar.bz2
-*.zip
-
 # macOS
 .DS_Store
 .DS_Store?
+*.icloud
 ._*
 .Spotlight-V100
 .Trashes
 ehthumbs.db
 Thumbs.db
 
-# Compiled binaries
-ffmpeg
-ffprobe
-ffplay
-ffmpeg-*
-
-# Package files
+# Build artifacts
+ffmpeg-src/
+ffmpeg.tar.bz2
+release/
+build-artifacts/
+*.tar.gz
 *.deb
 *.rpm
-*.dmg
-*.pkg
+checksums.txt
 
-# IDE files
+# Docker
+.buildx-cache/
+.buildx-cache-*/
+docker-compose.override.yml
+
+# Test artifacts
+test.mp4
+test_*.mp4
+motion_data.txt
+frame_analysis.log
+*.yuv
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.log
+
+# Editor files
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
 
-# Logs
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-
-# Test files
-test_*.mp4
-test.mp3
-test.opus
-test.ogg
-test.flac
-test.srt
-probe_output.json
-test_summary.md
+# System files
+*.pid
+*.seed
+*.pid.lock

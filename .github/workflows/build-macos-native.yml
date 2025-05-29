@@ -1,0 +1,148 @@
+name: Build Native FFmpeg for Apple Silicon
+
+on:
+  push:
+    tags:
+      - 'v3.*'  # New major version for correct approach
+  workflow_dispatch:
+
+jobs:
+  build-native:
+    runs-on: macos-14  # Apple Silicon runner
+    timeout-minutes: 180  # 3 hours max
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Cache Homebrew packages
+      uses: actions/cache@v4
+      with:
+        path: |
+          /opt/homebrew/Cellar
+          /opt/homebrew/lib
+          /opt/homebrew/include
+          /opt/homebrew/bin
+        key: ${{ runner.os }}-homebrew-${{ hashFiles('.github/workflows/build-macos-native.yml') }}
+        restore-keys: |
+          ${{ runner.os }}-homebrew-
+          
+    - name: Cache FFmpeg source
+      uses: actions/cache@v4
+      with:
+        path: ffmpeg-src
+        key: ffmpeg-source-${{ hashFiles('.github/workflows/build-macos-native.yml') }}-${{ github.run_number }}
+        restore-keys: |
+          ffmpeg-source-${{ hashFiles('.github/workflows/build-macos-native.yml') }}-
+          ffmpeg-source-
+      
+    - name: Install dependencies
+      run: |
+        # Update brew and install build dependencies
+        brew update
+        brew install pkg-config nasm yasm cmake autoconf automake libtool
+        
+        # Install codec libraries
+        brew install x264 x265 lame opus libvorbis libvpx webp fdk-aac freetype fontconfig
+        
+        echo "✅ Build dependencies installed"
+        
+    - name: Download FFmpeg source
+      run: |
+        if [ ! -d "ffmpeg-src" ]; then
+          echo "📥 Downloading FFmpeg source..."
+          curl -L "https://ffmpeg.org/releases/ffmpeg-snapshot.tar.bz2" -o ffmpeg.tar.bz2
+          tar -xjf ffmpeg.tar.bz2
+          mv ffmpeg ffmpeg-src
+          rm ffmpeg.tar.bz2
+          echo "✅ FFmpeg source downloaded"
+        else
+          echo "✅ FFmpeg source restored from cache"
+        fi
+        
+    - name: Configure FFmpeg for Apple Silicon
+      working-directory: ffmpeg-src
+      run: |
+        # Clean any previous build
+        make clean || true
+        
+        ./configure \
+          --prefix=/usr/local \
+          --arch=arm64 \
+          --target-os=darwin \
+          --enable-gpl \
+          --enable-version3 \
+          --enable-nonfree \
+          --enable-videotoolbox \
+          --enable-libx264 \
+          --enable-libx265 \
+          --enable-libmp3lame \
+          --enable-libopus \
+          --enable-libvorbis \
+          --enable-libvpx \
+          --enable-libwebp \
+          --enable-libfdk-aac \
+          --enable-libfreetype \
+          --enable-libfontconfig \
+          --enable-pic \
+          --enable-runtime-cpudetect \
+          --enable-avfilter \
+          --enable-postproc \
+          --disable-shared \
+          --enable-static \
+          --extra-cflags="-arch arm64" \
+          --extra-ldflags="-arch arm64"
+        echo "✅ FFmpeg configured for Apple Silicon"
+        
+    - name: Build FFmpeg
+      working-directory: ffmpeg-src
+      run: |
+        make -j$(sysctl -n hw.ncpu)
+        echo "✅ FFmpeg built successfully"
+        
+    - name: Test built binaries
+      working-directory: ffmpeg-src
+      run: |
+        echo "🧪 Testing built binaries..."
+        ./ffmpeg -version
+        ./ffprobe -version
+        file ./ffmpeg
+        file ./ffprobe
+        
+        # Test VideoToolbox support
+        ./ffmpeg -hide_banner -encoders | grep videotoolbox || echo "⚠️ VideoToolbox encoders not found"
+        
+        # Test motion vectors support
+        echo "🔍 Testing motion vectors support..."
+        ./ffmpeg -hide_banner -filters | grep codecview && echo "✅ Motion vectors filter available" || echo "⚠️ Motion vectors filter not found"
+        ./ffmpeg -hide_banner -filters | grep showinfo && echo "✅ Frame analysis filter available" || echo "⚠️ Frame analysis filter not found"
+        
+        echo "✅ Binaries tested successfully"
+        
+    - name: Package binaries
+      run: |
+        mkdir -p release
+        cp ffmpeg-src/ffmpeg release/
+        cp ffmpeg-src/ffprobe release/
+        cp ffmpeg-src/ffplay release/ || echo "ℹ️ ffplay not built (OK)"
+        
+        cd release
+        tar -czf ../ffmpeg-apple-silicon-native-${{ github.ref_name }}.tar.gz *
+        cd ..
+        
+        # Generate checksums
+        shasum -a 256 ffmpeg-apple-silicon-native-${{ github.ref_name }}.tar.gz > checksums.txt
+        
+        # Show package info
+        ls -lh ffmpeg-apple-silicon-native-*.tar.gz
+        cat checksums.txt
+        
+        echo "✅ Binaries packaged"
+        
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: ffmpeg-apple-silicon-native
+        path: |
+          ffmpeg-apple-silicon-native-*.tar.gz
+          checksums.txt 

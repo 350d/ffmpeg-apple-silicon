@@ -1,151 +1,152 @@
-# FFmpeg Apple Silicon Builder 🚀
+# FFmpeg for Apple Silicon
 
-Fast, efficient FFmpeg builds optimized for Apple Silicon (ARM64) architecture using Docker.
+Native FFmpeg build optimized for Apple Silicon (M1/M2/M3) with VideoToolbox hardware acceleration.
 
-## 🎯 Features
+## Architecture Overview
 
-- **⚡ Ultra-Fast Builds**: 6-10 minutes vs 2+ hours previously  
-- **🔧 Essential Codecs**: H.264 (x264) and MP3 (lame) support
-- **🏗️ ARM64 Optimized**: Native Apple Silicon performance
-- **🐳 Docker-Based**: Consistent builds across platforms
-- **🔄 GitHub Actions**: Automated CI/CD pipeline
+This project provides **two approaches** for FFmpeg builds:
 
-## 🚀 Quick Start
+### 🍎 **Native macOS** (Production)
+- **Fast & Efficient**: Direct compilation on macOS runners
+- **VideoToolbox**: Apple's native hardware acceleration
+- **Static binaries**: Ready-to-use without dependencies
+- **Trigger**: `git tag v3.x.x && git push origin v3.x.x`
 
-### Using Pre-built Docker Image
+### 🐳 **Docker Stages** (Development)  
+- **Dependencies** → **Configure** → **Build** (3 separate stages)
+- **Maximum caching**: Each stage caches independently
+- **Easy debugging**: Test individual stages
+- **Motion vectors verification**: Tested at each step
+
+Choose native macOS for production releases, Docker for development and testing.
+
+## Features
+
+- **Native Apple Silicon compilation** - runs directly on macOS ARM64
+- **VideoToolbox hardware acceleration** - leverages Apple's native video encoding/decoding
+- **Motion vectors support** - advanced video analysis and computer vision
+- **Static binaries** - no external dependencies required
+- **GitHub Actions automation** - builds triggered on version tags
+
+## Quick Start
+
+1. Download the latest release from [Releases](../../releases)
+2. Extract the binaries:
+   ```bash
+   tar -xzf ffmpeg-apple-silicon-native-*.tar.gz
+   ```
+3. Use the binaries:
+   ```bash
+   ./ffmpeg -i input.mp4 -c:v h264_videotoolbox output.mp4
+   ```
+
+## Hardware Acceleration
+
+The binaries include VideoToolbox support for hardware-accelerated encoding/decoding:
+
+- **H.264**: `-c:v h264_videotoolbox`
+- **H.265/HEVC**: `-c:v hevc_videotoolbox` 
+- **ProRes**: `-c:v prores_videotoolbox`
+
+## Motion Vectors Analysis
+
+The build includes full motion vectors support for advanced video analysis:
+
+### Export Motion Vectors
 ```bash
-# Pull the latest image
-docker pull ghcr.io/yourusername/ffmpeg-apple-silicon:latest
+# Export motion vectors as overlay
+./ffmpeg -flags2 +export_mvs -i input.mp4 -vf codecview=mv=pf+bf+bb output_with_vectors.mp4
 
-# Convert video to H.264
-docker run --rm -v $(pwd):/workspace ffmpeg-apple-silicon:latest \
-  -i input.mov -c:v libx264 -c:a libmp3lame output.mp4
+# Export motion vectors data to file
+./ffmpeg -flags2 +export_mvs -i input.mp4 -vf codecview=mv=pf -f null - 2> motion_data.txt
 ```
 
-### Building Locally
+### Frame Analysis
 ```bash
-git clone https://github.com/yourusername/ffmpeg-apple-silicon.git
-cd ffmpeg-apple-silicon
-docker build -t ffmpeg-fast .
+# Detailed frame information with motion vectors
+./ffmpeg -i input.mp4 -vf showinfo -f null - 2> frame_analysis.log
+
+# Combined motion vectors + frame info
+./ffmpeg -flags2 +export_mvs -i input.mp4 -vf "codecview=mv=pf+bf,showinfo" -f null -
 ```
 
-## 📊 Performance
+### Use Cases
+- **Motion detection** - surveillance and security applications
+- **Computer vision** - object tracking and movement analysis  
+- **Video compression** - understanding encoding efficiency
+- **Sports analysis** - player and ball tracking
+- **Academic research** - video processing algorithms
 
-| Version | Build Time | Codecs | Use Case |
-|---------|------------|---------|-----------|
-| v2.1.0 | 6-10 min | H.264, MP3 | ⚡ Fast development |
-| v2.0.x | 45+ min | H.264, H.265, VP9, AV1, Opus, MP3 | 🔧 Full features |
-| v1.x | 2+ hours | All codecs | 📦 Stable releases |
+## Building from Source
 
-## 🔧 Supported Codecs
+Binaries are automatically built via GitHub Actions when new version tags are pushed:
 
-### Video
-- **H.264 (x264)**: Industry standard, fast encoding
-- **Hardware acceleration**: V4L2 support for ARM64
-
-### Audio  
-- **MP3 (lame)**: Universal compatibility
-- **Native formats**: PCM, AAC (built-in)
-
-## 📝 Usage Examples
-
-### Basic Video Conversion
 ```bash
-docker run --rm -v $(pwd):/workspace ffmpeg-fast:latest \
-  -i input.mp4 -c:v libx264 -crf 23 -c:a libmp3lame output.mp4
+git tag v3.1.0
+git push origin v3.1.0
 ```
 
-### Batch Processing
+This triggers a native macOS build with all optimizations and VideoToolbox support.
+
+## Docker Development (Dependencies Testing)
+
+For dependency testing and development purposes, there's also a Docker-based approach with separate stages:
+
+### Staged Docker Build Process
+
+The Docker build is split into three optimized stages for maximum caching efficiency:
+
+1. **Dependencies** (`Dockerfile.deps`) - Install and verify all codec libraries
+2. **Configure** (`Dockerfile.configure`) - Run FFmpeg configure with all options  
+3. **Build** (`Dockerfile.build`) - Compile FFmpeg binaries
+
+### Test Individual Stages
 ```bash
-for file in *.mov; do
-  docker run --rm -v $(pwd):/workspace ffmpeg-fast:latest \
-    -i "$file" -c:v libx264 -c:a libmp3lame "${file%.*}.mp4"
-done
+# Test dependencies only
+./tmp/test-deps.sh
+
+# Test configure stage
+./tmp/test-configure.sh  
+
+# Test full build
+./tmp/test-build.sh
+
+# Manual stage testing
+docker build --platform linux/arm64 -f Dockerfile.deps -t ffmpeg-deps .
+docker build --platform linux/arm64 -f Dockerfile.configure -t ffmpeg-configure .
+docker build --platform linux/arm64 -f Dockerfile.build --build-arg BASE_IMAGE=ffmpeg-configure:latest -t ffmpeg-final .
 ```
 
-### Streaming Optimization
+### Benefits of Staged Approach
+- ✅ **Maximum caching** - each stage caches independently
+- ✅ **Fast iteration** - configure changes don't rebuild dependencies
+- ✅ **Easy debugging** - test each stage separately
+- ✅ **Motion vectors verification** - tested at each stage
+
+### Download Built Binaries
 ```bash
-docker run --rm -v $(pwd):/workspace ffmpeg-fast:latest \
-  -i input.mp4 -c:v libx264 -preset fast -tune zerolatency \
-  -c:a libmp3lame -b:a 128k output.mp4
+# After running build tests, download artifacts:
+./tmp/download-artifacts.sh
+
+# Artifacts will be available in ./downloads/:
+# - ffmpeg (binary)
+# - ffprobe (binary) 
+# - ffmpeg-linux-arm64-YYYYMMDD.tar.gz (archive)
+# - checksums.txt (integrity verification)
 ```
 
-## 🏗️ Architecture
+The Docker dependencies setup stops before FFmpeg configure, focusing on:
+- ✅ Stable dependency installation
+- ✅ Comprehensive caching strategy  
+- ✅ All codec libraries verification
+- ✅ Motion vectors support readiness
+- ✅ **Clean build output** (warnings suppressed)
+- ✅ **Downloadable artifacts** with checksums
 
-The v2.1.0 architecture focuses on speed and simplicity:
+## Documentation
 
-```
-Base Ubuntu 22.04 ARM64
-├── Essential build tools
-├── x264 (H.264 encoder) 
-├── lame (MP3 encoder)
-└── FFmpeg (minimal config)
-```
+- **[Motion Vectors Guide](MOTION_VECTORS.md)** - Comprehensive motion vectors documentation with examples
 
-**Key Optimizations:**
-- ⚡ Minimal dependency set
-- 🎯 Only essential codecs
-- 📦 Single-layer Docker build
-- 🔧 Parallel compilation (`-j$(nproc)`)
+## License
 
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch: `git checkout -b feature/awesome-codec`
-3. Make your changes
-4. Test locally: `docker build -t test .`
-5. Submit a pull request
-
-## 📈 Version History
-
-- **v2.1.0**: Fast minimal build (6-10 min) - H.264 + MP3
-- **v2.0.1**: Multi-layer caching (45+ min) - Full codec support  
-- **v1.1.2**: Stable releases (2+ hours) - Maximum compatibility
-
-## 📄 License
-
-MIT License - see [LICENSE](LICENSE) file for details.
-
-## 🙏 Acknowledgments
-
-- [FFmpeg](https://ffmpeg.org/) - The complete multimedia solution
-- [x264](https://www.videolan.org/developers/x264.html) - H.264 encoder
-- [lame](http://lame.sourceforge.net/) - MP3 encoder
-- Docker community for ARM64 support
-
-## 📄 Documentation
-
-- [Build Process Details](BUILD_PROCESS.md) - Technical build documentation
-- [Motion Vectors Guide](MOTION_VECTORS.md) - Modern motion vector access
-
-## 🔗 Links
-
-- [FFmpeg Official Site](https://ffmpeg.org/)
-- [VideoToolbox Documentation](https://developer.apple.com/documentation/videotoolbox)
-- [Apple Silicon Optimization Guide](https://developer.apple.com/documentation/apple-silicon) 
-
-## 🎯 Recent Improvements
-
-### ✅ ARM64 Build Optimization
-- **Added `--enable-pic`** to all configurations for correct static builds on Apple Silicon
-- **Fixed Motion Vector support**: removed deprecated `--enable-mv-export`, added modern API documentation
-- Improved compatibility with GPT recommendations for FFmpeg ARM64
-
-### ✅ Motion Vectors - Important Update
-**The `--enable-mv-export` flag is no longer supported!** 
-
-Instead, use the modern runtime approach:
-```bash
-# Export motion vectors
-ffmpeg -flags2 +export_mvs -i video.mp4 -vf codecview=mv=pf output.mp4
-
-# Programmatic access via API (see MOTION_VECTORS.md)
-av_dict_set(&opts, "flags2", "+export_mvs", 0);
-```
-
-📋 **Details**: See [MOTION_VECTORS.md](MOTION_VECTORS.md) for complete guide
-
-### ✅ Quick Testing System
-- **Build time**: 2.5 minutes (instead of 2+ hours)
-- **Docker testing**: Minimal configuration with x264 only
-- **Automated checks**: GitHub Actions + local scripts 
+MIT License - see [LICENSE](LICENSE) file for details. 

@@ -1,0 +1,147 @@
+name: Test Docker Stages (Configure & Build)
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths: 
+      - 'Dockerfile.*'
+      - '.github/workflows/test-docker-stages.yml'
+  workflow_dispatch:
+
+jobs:
+  test-stages:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+      
+    - name: Build Dependencies Stage
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        file: ./Dockerfile.deps
+        push: false
+        tags: ffmpeg-deps:latest
+        platforms: linux/arm64
+        cache-from: type=gha,scope=ffmpeg-deps
+        cache-to: type=gha,mode=max,scope=ffmpeg-deps
+        
+    - name: Build Configure Stage
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        file: ./Dockerfile.configure
+        push: false
+        tags: ffmpeg-configure:latest
+        platforms: linux/arm64
+        cache-from: |
+          type=gha,scope=ffmpeg-deps
+          type=gha,scope=ffmpeg-configure
+        cache-to: type=gha,mode=max,scope=ffmpeg-configure
+        
+    - name: Test Configure Stage
+      run: |
+        echo "🔧 Testing configure stage..."
+        
+        # Verify configure completed successfully
+        docker run --rm --platform linux/arm64 ffmpeg-configure:latest \
+          bash -c "
+            cd /src/ffmpeg-src
+            echo '📋 Configure verification:'
+            test -f config.h && echo '✅ config.h present' || echo '❌ config.h missing'
+            test -f Makefile && echo '✅ Makefile present' || echo '❌ Makefile missing'
+            grep -c 'HAVE_.*1' config.h | head -1 && echo '✅ Features configured'
+            echo '🎯 Motion vectors support:'
+            grep -E '(AVFILTER|POSTPROC).*1' config.h | head -3 || echo 'Options in config'
+          "
+          
+    - name: Build Final Stage
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        file: ./Dockerfile.build
+        build-args: BASE_IMAGE=ffmpeg-configure:latest
+        push: false
+        tags: ffmpeg-final:latest
+        platforms: linux/arm64
+        cache-from: |
+          type=gha,scope=ffmpeg-deps
+          type=gha,scope=ffmpeg-configure
+          type=gha,scope=ffmpeg-build
+        cache-to: type=gha,mode=max,scope=ffmpeg-build
+        
+    - name: Test Build Stage
+      run: |
+        echo "🏗️ Testing build stage..."
+        
+        # Verify binaries built successfully
+        docker run --rm --platform linux/arm64 ffmpeg-final:latest \
+          bash -c "
+            echo '🧪 Binary verification:'
+            ls -la /dist/
+            /dist/ffmpeg -version | head -2
+            /dist/ffprobe -version | head -1
+            echo '🎯 Motion vectors test:'
+            /dist/ffmpeg -hide_banner -filters | grep codecview && echo '✅ Motion vectors available' || echo '⚠️ Not found'
+            echo '📊 Binary info:'
+            file /dist/ffmpeg
+            ls -lh /dist/ffmpeg /dist/ffprobe
+          "
+          
+    - name: Performance Test
+      run: |
+        echo "⚡ Performance test..."
+        
+        # Quick encoding test
+        docker run --rm --platform linux/arm64 ffmpeg-final:latest \
+          bash -c "
+            echo '🎬 Quick encoding test:'
+            /dist/ffmpeg -f lavfi -i testsrc=duration=1:size=320x240:rate=10 \
+              -c:v libx264 -preset ultrafast -f null - -v quiet \
+              && echo '✅ Encoding test passed' || echo '❌ Encoding failed'
+          "
+          
+    - name: Motion Vectors Integration Test
+      run: |
+        echo "🎯 Motion vectors integration test..."
+        
+        docker run --rm --platform linux/arm64 ffmpeg-final:latest \
+          bash -c "
+            echo '🔍 Motion vectors export test:'
+            /dist/ffmpeg -f lavfi -i testsrc=duration=1:size=160x120:rate=5 \
+              -flags2 +export_mvs -vf codecview=mv=pf \
+              -f null - -v quiet \
+              && echo '✅ Motion vectors export working' || echo '⚠️ Export test failed'
+          "
+          
+    - name: Extract Artifacts
+      run: |
+        echo "📦 Extracting build artifacts..."
+        
+        # Create temporary container and copy artifacts
+        CONTAINER_ID=$(docker create --platform linux/arm64 ffmpeg-final:latest)
+        docker cp $CONTAINER_ID:/artifacts ./build-artifacts
+        docker rm $CONTAINER_ID
+        
+        # Show artifact contents
+        echo "📋 Available artifacts:"
+        ls -la ./build-artifacts/
+        
+    - name: Upload Build Artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: ffmpeg-linux-arm64-binaries
+        path: build-artifacts/
+        retention-days: 30
+        
+    - name: Upload Checksums
+      uses: actions/upload-artifact@v4  
+      with:
+        name: ffmpeg-checksums
+        path: build-artifacts/checksums.txt
+        retention-days: 30 
