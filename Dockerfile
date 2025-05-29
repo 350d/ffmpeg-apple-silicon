@@ -1,6 +1,5 @@
-ARG TARGETPLATFORM=linux/arm64
-
-FROM --platform=$TARGETPLATFORM ubuntu:22.04
+ARG TARGETPLATFORM
+FROM --platform=${TARGETPLATFORM} ubuntu:22.04
 
 # Install only essential build tools - no external dependencies
 RUN apt-get update && apt-get install -y \
@@ -18,9 +17,9 @@ ENV PKG_CONFIG_PATH="$FFMPEG_BUILD_ROOT/lib/pkgconfig"
 ENV PATH="$FFMPEG_BUILD_ROOT/bin:$PATH"
 RUN mkdir -p "$FFMPEG_BUILD_ROOT"
 
-# Download and build FFmpeg in one layer - no external codecs
+# Download and build FFmpeg with only built-in codecs
 WORKDIR /tmp
-RUN echo "🚀 Building ultra-minimal FFmpeg (system codecs only)..." \
+RUN echo "🚀 Building ultra-minimal FFmpeg (built-in codecs only)..." \
     && curl -L "https://ffmpeg.org/releases/ffmpeg-snapshot.tar.bz2" -o ffmpeg.tar.bz2 \
     && tar -xjf ffmpeg.tar.bz2 \
     && rm ffmpeg.tar.bz2 \
@@ -34,10 +33,10 @@ RUN echo "🚀 Building ultra-minimal FFmpeg (system codecs only)..." \
         --disable-ffplay \
         --disable-network \
         --disable-autodetect \
-        --enable-encoder=libx264 \
         --enable-decoder=h264 \
-        --enable-encoder=mp3 \
+        --enable-decoder=aac \
         --enable-decoder=mp3 \
+        --enable-encoder=aac \
         --enable-muxer=mp4 \
         --enable-demuxer=mp4 \
         --enable-muxer=mp3 \
