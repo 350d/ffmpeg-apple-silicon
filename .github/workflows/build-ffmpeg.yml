@@ -35,8 +35,8 @@ jobs:
         tags: |
           ffmpeg-apple-silicon:latest
           ffmpeg-apple-silicon:${{ github.ref_name }}
-        cache-from: type=gha
-        cache-to: type=gha,mode=max
+        cache-from: type=gha,scope=v2.3.0
+        cache-to: type=gha,mode=max,scope=v2.3.0
         outputs: type=docker
         
     - name: Test FFmpeg binary

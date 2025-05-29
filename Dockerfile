@@ -1,4 +1,4 @@
-# Multi-stage Dockerfile with effective dependency caching
+# Multi-stage Dockerfile with effective dependency caching v2.3.0
 ARG TARGETPLATFORM
 FROM --platform=${TARGETPLATFORM} ubuntu:22.04 AS dependencies
 
@@ -60,12 +60,10 @@ RUN echo "🚀 Building FFmpeg..." \
         --disable-ffplay \
         --disable-network \
         --disable-autodetect \
-        --enable-encoder=libx264 \
         --enable-decoder=h264 \
         --enable-decoder=aac \
         --enable-decoder=mp3 \
         --enable-encoder=aac \
-        --enable-encoder=mp3 \
         --enable-muxer=mp4 \
         --enable-demuxer=mp4 \
         --enable-muxer=mp3 \

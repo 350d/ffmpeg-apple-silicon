@@ -49,8 +49,8 @@ jobs:
         tags: |
           ffmpeg-apple-silicon:${{ steps.tag_name.outputs.tag }}
           ffmpeg-apple-silicon:latest
-        cache-from: type=gha
-        cache-to: type=gha,mode=max
+        cache-from: type=gha,scope=v2.3.0
+        cache-to: type=gha,mode=max,scope=v2.3.0
         outputs: type=docker
         
     - name: Extract binaries from Docker image
