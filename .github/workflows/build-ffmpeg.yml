@@ -34,8 +34,7 @@ jobs:
         tags: |
           ffmpeg-apple-silicon:latest
           ffmpeg-apple-silicon:${{ github.ref_name }}
-        cache-from: type=gha
-        cache-to: type=gha,mode=max
+        no-cache: true
         outputs: type=docker
         
     - name: Test FFmpeg binary
@@ -49,6 +48,6 @@ jobs:
         echo "📊 Build Report for ${{ github.ref_name }}"
         echo "- Build completed successfully"
         echo "- Platform: linux/arm64" 
-        echo "- Codecs: H.264 (x264), MP3 (lame)"
-        echo "- Build time: ~6-10 minutes"
+        echo "- Codecs: Built-in H.264, AAC, MP3 decoders only"
+        echo "- Build time: ~1-2 minutes (ultra-minimal)"
         docker run --rm ffmpeg-apple-silicon:latest -version | grep "built with" 
