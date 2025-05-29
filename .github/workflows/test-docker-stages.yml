@@ -3,9 +3,6 @@ name: Test Docker Stages (Configure & Build)
 on:
   push:
     branches: [ main, develop ]
-    paths: 
-      - 'Dockerfile.*'
-      - '.github/workflows/test-docker-stages.yml'
   workflow_dispatch:
 
 jobs:
