@@ -1,17 +1,17 @@
 name: Quick Test Build
 
 on:
-  push:
-    branches: [ main, master ]
-    paths:
-      - 'scripts/configure-ffmpeg*.sh'
-      - 'Dockerfile*'
   pull_request:
     branches: [ main, master ]
     paths:
       - 'scripts/configure-ffmpeg*.sh'
       - 'Dockerfile*'
   workflow_dispatch:
+    inputs:
+      force_run:
+        description: 'Force run this test workflow'
+        required: false
+        default: 'false'
 
 env:
   REGISTRY: ghcr.io
