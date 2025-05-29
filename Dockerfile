@@ -1,8 +1,7 @@
-# Multi-stage Dockerfile with effective dependency caching v2.3.0
 ARG TARGETPLATFORM
-FROM --platform=${TARGETPLATFORM} ubuntu:22.04 AS dependencies
+FROM --platform=${TARGETPLATFORM} ubuntu:22.04
 
-# Install build tools in one layer - will be cached
+# Install only essential build tools - no external dependencies
 RUN apt-get update && apt-get install -y \
     build-essential \
     git \
@@ -18,38 +17,12 @@ ENV PKG_CONFIG_PATH="$FFMPEG_BUILD_ROOT/lib/pkgconfig"
 ENV PATH="$FFMPEG_BUILD_ROOT/bin:$PATH"
 RUN mkdir -p "$FFMPEG_BUILD_ROOT"
 
-# Download and build external dependencies in separate layers - cached
+# Download and build FFmpeg with only built-in codecs
 WORKDIR /tmp
-
-# Layer 1: Download sources (often cached)
-RUN echo "📦 Downloading dependencies..." \
-    && curl -L "https://github.com/madler/zlib/archive/refs/tags/v1.3.tar.gz" -o zlib.tar.gz \
-    && curl -L "https://ftp.gnu.org/pub/gnu/libiconv/libiconv-1.17.tar.gz" -o libiconv.tar.gz \
-    && tar -xzf zlib.tar.gz && rm zlib.tar.gz \
-    && tar -xzf libiconv.tar.gz && rm libiconv.tar.gz
-
-# Layer 2: Build zlib (cached unless source changes)
-RUN echo "🔧 Building zlib..." \
-    && cd zlib-1.3 \
-    && ./configure --prefix="$FFMPEG_BUILD_ROOT" --static \
-    && make -j$(nproc) \
-    && make install
-
-# Layer 3: Build libiconv (cached unless source changes)  
-RUN echo "🔧 Building libiconv..." \
-    && cd libiconv-1.17 \
-    && ./configure --prefix="$FFMPEG_BUILD_ROOT" --enable-static --disable-shared \
-    && make -j$(nproc) \
-    && make install
-
-# Layer 4: Download FFmpeg source (cached for same snapshot)
-RUN echo "📦 Downloading FFmpeg..." \
+RUN echo "🚀 Building ultra-minimal FFmpeg (built-in codecs only)..." \
     && curl -L "https://ffmpeg.org/releases/ffmpeg-snapshot.tar.bz2" -o ffmpeg.tar.bz2 \
     && tar -xjf ffmpeg.tar.bz2 \
-    && rm ffmpeg.tar.bz2
-
-# Layer 5: Build FFmpeg (only rebuilds if config or source changes)
-RUN echo "🚀 Building FFmpeg..." \
+    && rm ffmpeg.tar.bz2 \
     && cd ffmpeg \
     && ./configure \
         --prefix="$FFMPEG_BUILD_ROOT" \
@@ -69,21 +42,14 @@ RUN echo "🚀 Building FFmpeg..." \
         --enable-muxer=mp3 \
         --enable-demuxer=mp3 \
         --enable-protocol=file \
-        --enable-pic \
     && make -j$(nproc) \
-    && make install
+    && make install \
+    && cd /tmp \
+    && rm -rf ffmpeg \
+    && echo "✅ Ultra-minimal FFmpeg completed"
 
-# Final stage: minimal runtime image
-FROM --platform=${TARGETPLATFORM} ubuntu:22.04 AS runtime
-
-# Copy only the built binaries
-COPY --from=dependencies /opt/ffmpeg/bin /opt/ffmpeg/bin
-COPY --from=dependencies /opt/ffmpeg/lib /opt/ffmpeg/lib
-
-# Add to PATH
-ENV PATH="/opt/ffmpeg/bin:$PATH"
-
-# Test that it works
+# Test the build
 RUN ffmpeg -version && echo "✅ FFmpeg working"
 
-WORKDIR /workspace 
+WORKDIR /workspace
+ENTRYPOINT ["ffmpeg"] 
