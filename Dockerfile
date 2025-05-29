@@ -77,7 +77,7 @@ RUN curl -fL "https://code.videolan.org/videolan/x264/-/archive/ff620d0c/x264-ff
     tar -xzf x264.tar.gz && rm x264.tar.gz && \
     tar -xzf x265.tar.gz && rm x265.tar.gz && \
     tar -xzf libvpx.tar.gz && rm libvpx.tar.gz && \
-    tar -xzf aom.tar.gz && rm aom.tar.gz && \
+    mkdir -p aom && tar -xzf aom.tar.gz -C aom && rm aom.tar.gz && \
     tar -xzf kvazaar.tar.gz && rm kvazaar.tar.gz && \
     tar -xzf svt-av1.tar.gz && rm svt-av1.tar.gz
 
