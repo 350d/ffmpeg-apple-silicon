@@ -1,0 +1,14 @@
+ARG TARGETPLATFORM
+FROM --platform=${TARGETPLATFORM} ubuntu:22.04
+
+# Install system FFmpeg - ultra fast approach
+RUN apt-get update && apt-get install -y \
+    ffmpeg \
+    && rm -rf /var/lib/apt/lists/* \
+    && echo "✅ System FFmpeg installed"
+
+# Test the installation
+RUN ffmpeg -version && echo "✅ FFmpeg working"
+
+WORKDIR /workspace
+ENTRYPOINT ["ffmpeg"] 
