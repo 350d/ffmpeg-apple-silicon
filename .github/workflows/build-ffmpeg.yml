@@ -11,7 +11,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 30  # Reduced to 30 minutes for fast build
+    timeout-minutes: 60  # Increased for first build with caching
     
     steps:
     - name: Checkout repository
@@ -22,11 +22,11 @@ jobs:
       with:
         platforms: linux/arm64
         
-    - name: Build and export to Docker
+    - name: Build and export to Docker (with layer caching)
       uses: docker/build-push-action@v5
       with:
         context: .
-        file: ./Dockerfile
+        file: ./Dockerfile.cached
         platforms: linux/arm64
         push: false
         load: true
@@ -35,7 +35,8 @@ jobs:
         tags: |
           ffmpeg-apple-silicon:latest
           ffmpeg-apple-silicon:${{ github.ref_name }}
-        no-cache: true
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
         outputs: type=docker
         
     - name: Test FFmpeg binary
@@ -49,6 +50,6 @@ jobs:
         echo "📊 Build Report for ${{ github.ref_name }}"
         echo "- Build completed successfully"
         echo "- Platform: linux/arm64" 
-        echo "- Codecs: Built-in H.264, AAC, MP3 decoders only"
-        echo "- Build time: ~1-2 minutes (ultra-minimal)"
+        echo "- Codecs: H.264 (x264), AAC, MP3 with zlib and libiconv"
+        echo "- Build strategy: Multi-layer with GitHub Actions caching"
         docker run --rm ffmpeg-apple-silicon:latest -version | grep "built with" 

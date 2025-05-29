@@ -40,7 +40,7 @@ jobs:
       uses: docker/build-push-action@v5
       with:
         context: .
-        file: ./Dockerfile
+        file: ./Dockerfile.cached
         platforms: linux/arm64
         push: false
         load: true
@@ -49,7 +49,8 @@ jobs:
         tags: |
           ffmpeg-apple-silicon:${{ steps.tag_name.outputs.tag }}
           ffmpeg-apple-silicon:latest
-        no-cache: true
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
         outputs: type=docker
         
     - name: Extract binaries from Docker image
