@@ -114,7 +114,7 @@ build_lib "libvorbis" "libvorbis-*" "--disable-shared --enable-static --with-ogg
 build_lib "FLAC" "flac-*" "--disable-shared --enable-static --disable-doxygen-docs --disable-xmms-plugin"
 
 # Video codecs
-build_lib "x264" "x264" "--enable-static --enable-pic --disable-cli"
+build_lib "x264" "x264-ff620d0c" "--disable-shared --enable-static --enable-pic --disable-cli --disable-avs --disable-swscale --disable-lavf --disable-ffms"
 
 # x265 (special CMake handling)
 progress "Building x265..."
@@ -129,7 +129,7 @@ make -j$(nproc) >/dev/null 2>&1
 make install >/dev/null 2>&1
 echo "✅ Completed x265"
 
-build_lib "libvpx" "libvpx" "--disable-shared --enable-static --disable-examples --disable-unit-tests --enable-vp9-highbitdepth --as=yasm"
+build_lib "libvpx" "libvpx-1.15.1" "--disable-shared --enable-static --disable-examples --disable-tools --enable-vp8 --enable-vp9 --enable-vp9-highbitdepth"
 
 # AOM (CMake)
 progress "Building AOM..."
@@ -146,15 +146,15 @@ make -j$(nproc) >/dev/null 2>&1
 make install >/dev/null 2>&1
 echo "✅ Completed AOM"
 
-# SVT-AV1 (CMake)
+# SVT-AV1 (special CMake handling)
 progress "Building SVT-AV1..."
-cd "$SOURCE_DIR/SVT-AV1"
+cd "$SOURCE_DIR/SVT-AV1-v2.3.0"
 mkdir -p build && cd build
 cmake .. \
     -DCMAKE_INSTALL_PREFIX="$FFMPEG_BUILD_ROOT" \
-    -DCMAKE_BUILD_TYPE=Release \
-    -DBUILD_DEC=OFF \
-    -DBUILD_SHARED_LIBS=OFF >/dev/null 2>&1
+    -DBUILD_SHARED_LIBS=OFF \
+    -DBUILD_TESTING=OFF \
+    -DBUILD_APPS=OFF >/dev/null 2>&1
 make -j$(nproc) >/dev/null 2>&1
 make install >/dev/null 2>&1
 echo "✅ Completed SVT-AV1"
@@ -184,40 +184,40 @@ build_lib "libass" "libass-*" "--disable-shared --enable-static"
 # Video processing
 # vid.stab (CMake)
 echo "📦 Building vid.stab..."
-cd "$SOURCE_DIR/vid.stab"
+cd "$SOURCE_DIR/vid.stab-1.1.1"
 mkdir -p build && cd build
 cmake .. \
     -DCMAKE_INSTALL_PREFIX="$FFMPEG_BUILD_ROOT" \
     -DBUILD_SHARED_LIBS=OFF
-make -j$(nproc)
-make install
+make -j$(nproc) >/dev/null 2>&1
+make install >/dev/null 2>&1
 echo "✅ Completed vid.stab"
 
 # zimg
 echo "📦 Building zimg..."
-cd "$SOURCE_DIR/zimg-"*
-./autogen.sh
-./configure --prefix="$FFMPEG_BUILD_ROOT" --disable-shared --enable-static
-make -j$(nproc)
-make install
+cd "$SOURCE_DIR/zimg-release-3.0.5"
+./autogen.sh >/dev/null 2>&1
+./configure --prefix="$FFMPEG_BUILD_ROOT" --disable-shared --enable-static >/dev/null 2>&1
+make -j$(nproc) >/dev/null 2>&1
+make install >/dev/null 2>&1
 echo "✅ Completed zimg"
 
 # kvazaar
 echo "📦 Building kvazaar..."
-cd "$SOURCE_DIR/kvazaar"
-./autogen.sh
-./configure --prefix="$FFMPEG_BUILD_ROOT" --disable-shared --enable-static
-make -j$(nproc)
-make install
+cd "$SOURCE_DIR/kvazaar-2.3.1"
+./autogen.sh >/dev/null 2>&1
+./configure --prefix="$FFMPEG_BUILD_ROOT" --disable-shared --enable-static >/dev/null 2>&1
+make -j$(nproc) >/dev/null 2>&1
+make install >/dev/null 2>&1
 echo "✅ Completed kvazaar"
 
 # Container formats
 echo "📦 Building libbluray..."
-cd "$SOURCE_DIR/libbluray"
-./bootstrap
-./configure --prefix="$FFMPEG_BUILD_ROOT" --disable-shared --enable-static --disable-dependency-tracking --disable-silent-rules --without-libxml2 --without-freetype --disable-doxygen-doc --disable-bdjava-jar
-make -j$(nproc)
-make install
+cd "$SOURCE_DIR/libbluray-1.3.4"
+./bootstrap >/dev/null 2>&1
+./configure --prefix="$FFMPEG_BUILD_ROOT" --disable-shared --enable-static --disable-dependency-tracking --disable-silent-rules --without-libxml2 --without-freetype --disable-doxygen-doc --disable-bdjava-jar >/dev/null 2>&1
+make -j$(nproc) >/dev/null 2>&1
+make install >/dev/null 2>&1
 echo "✅ Completed libbluray"
 
 # SDL2 for ffplay

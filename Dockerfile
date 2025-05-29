@@ -67,13 +67,19 @@ RUN curl -fL "https://downloads.sourceforge.net/project/lame/lame/3.100/lame-3.1
     tar -xJf flac.tar.xz && rm flac.tar.xz
 
 # Video codecs (cacheable layer)
-RUN git clone --depth 1 https://code.videolan.org/videolan/x264.git && \
+# Use stable releases instead of latest Git to improve Docker layer caching
+RUN curl -fL "https://code.videolan.org/videolan/x264/-/archive/ff620d0c/x264-ff620d0c.tar.gz" -o x264.tar.gz && \
     curl -fL "https://github.com/ShiftMediaProject/x265/archive/refs/tags/4.0.tar.gz" -o x265.tar.gz && \
+    curl -fL "https://github.com/webmproject/libvpx/archive/refs/tags/v1.15.1.tar.gz" -o libvpx.tar.gz && \
+    curl -fL "https://aomedia.googlesource.com/aom/+archive/refs/tags/v3.11.0.tar.gz" -o aom.tar.gz && \
+    curl -fL "https://github.com/ultravideo/kvazaar/archive/refs/tags/v2.3.1.tar.gz" -o kvazaar.tar.gz && \
+    curl -fL "https://gitlab.com/AOMediaCodec/SVT-AV1/-/archive/v2.3.0/SVT-AV1-v2.3.0.tar.gz" -o svt-av1.tar.gz && \
+    tar -xzf x264.tar.gz && rm x264.tar.gz && \
     tar -xzf x265.tar.gz && rm x265.tar.gz && \
-    git clone --depth 1 https://chromium.googlesource.com/webm/libvpx.git && \
-    git clone --depth 1 https://aomedia.googlesource.com/aom.git && \
-    git clone --depth 1 https://github.com/ultravideo/kvazaar.git && \
-    git clone --depth 1 https://gitlab.com/AOMediaCodec/SVT-AV1.git
+    tar -xzf libvpx.tar.gz && rm libvpx.tar.gz && \
+    tar -xzf aom.tar.gz && rm aom.tar.gz && \
+    tar -xzf kvazaar.tar.gz && rm kvazaar.tar.gz && \
+    tar -xzf svt-av1.tar.gz && rm svt-av1.tar.gz
 
 # Image formats (cacheable layer)
 RUN curl -L "https://github.com/webmproject/libwebp/archive/refs/tags/v1.3.2.tar.gz" -o libwebp.tar.gz && \
@@ -94,12 +100,14 @@ RUN curl -L "https://download.savannah.gnu.org/releases/freetype/freetype-2.13.2
     tar -xJf libass.tar.xz && rm libass.tar.xz
 
 # Video processing (cacheable layer)
-RUN git clone --depth 1 https://github.com/georgmartius/vid.stab.git && \
-    curl -L "https://github.com/sekrit-twc/zimg/archive/refs/tags/release-3.0.5.tar.gz" -o zimg.tar.gz && \
+RUN curl -fL "https://github.com/georgmartius/vid.stab/archive/refs/tags/v1.1.1.tar.gz" -o vid.stab.tar.gz && \
+    tar -xzf vid.stab.tar.gz && rm vid.stab.tar.gz && \
+    curl -fL "https://github.com/sekrit-twc/zimg/archive/refs/tags/release-3.0.5.tar.gz" -o zimg.tar.gz && \
     tar -xzf zimg.tar.gz && rm zimg.tar.gz
 
-# Container formats (cacheable layer)
-RUN git clone --depth 1 https://code.videolan.org/videolan/libbluray.git
+# Media containers (cacheable layer)
+RUN curl -fL "https://code.videolan.org/videolan/libbluray/-/archive/1.3.4/libbluray-1.3.4.tar.gz" -o libbluray.tar.gz && \
+    tar -xzf libbluray.tar.gz && rm libbluray.tar.gz
 
 # SDL for ffplay (cacheable layer)
 RUN curl -L "https://github.com/libsdl-org/SDL/releases/download/release-2.28.5/SDL2-2.28.5.tar.gz" -o sdl2.tar.gz && \
