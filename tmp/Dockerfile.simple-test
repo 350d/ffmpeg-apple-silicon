@@ -1,0 +1,77 @@
+FROM --platform=linux/arm64 ubuntu:22.04 AS base
+
+# Install essential build tools
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    git \
+    curl \
+    pkg-config \
+    autoconf \
+    automake \
+    libtool \
+    nasm \
+    yasm \
+    && rm -rf /var/lib/apt/lists/*
+
+ENV FFMPEG_BUILD_ROOT="/opt/ffmpeg"
+ENV PKG_CONFIG_PATH="$FFMPEG_BUILD_ROOT/lib/pkgconfig"
+ENV PATH="$FFMPEG_BUILD_ROOT/bin:$PATH"
+RUN mkdir -p "$FFMPEG_BUILD_ROOT"
+
+# Single layer with essential codecs only - no vorbis
+FROM base AS essential-codecs
+RUN echo "🚀 Building essential codecs (x264, lame, opus)..." \
+    # x264 - fastest H.264 codec
+    && git clone --depth 1 https://code.videolan.org/videolan/x264.git /tmp/x264 \
+    && cd /tmp/x264 \
+    && ./configure --prefix="$FFMPEG_BUILD_ROOT" --disable-shared --enable-static --enable-pic \
+    && make -j$(nproc) \
+    && make install \
+    && echo "✅ x264 completed" \
+    # lame - MP3 support
+    && curl -L "https://downloads.sourceforge.net/project/lame/lame/3.100/lame-3.100.tar.gz" -o lame.tar.gz \
+    && tar -xzf lame.tar.gz && rm lame.tar.gz \
+    && cd lame-3.100 \
+    && ./configure --prefix="$FFMPEG_BUILD_ROOT" --disable-shared --enable-static \
+    && make -j$(nproc) \
+    && make install \
+    && echo "✅ lame completed" \
+    # opus - high quality audio
+    && git clone --depth 1 https://github.com/xiph/opus.git /tmp/opus \
+    && cd /tmp/opus \
+    && ./autogen.sh \
+    && ./configure --prefix="$FFMPEG_BUILD_ROOT" --disable-shared --enable-static \
+    && make -j$(nproc) \
+    && make install \
+    && echo "✅ opus completed"
+
+# Build minimal FFmpeg
+FROM essential-codecs AS ffmpeg-minimal
+RUN git clone --depth 1 https://git.ffmpeg.org/ffmpeg.git /tmp/ffmpeg \
+    && cd /tmp/ffmpeg \
+    && ./configure \
+       --prefix="$FFMPEG_BUILD_ROOT" \
+       --pkg-config-flags="--static" \
+       --extra-cflags="-I$FFMPEG_BUILD_ROOT/include" \
+       --extra-ldflags="-L$FFMPEG_BUILD_ROOT/lib" \
+       --bindir="$FFMPEG_BUILD_ROOT/bin" \
+       --enable-static \
+       --disable-shared \
+       --disable-debug \
+       --disable-ffplay \
+       --enable-gpl \
+       --enable-libx264 \
+       --enable-libmp3lame \
+       --enable-libopus \
+       --enable-pic \
+    && make -j2 \
+    && make install \
+    && echo "✅ FFmpeg minimal build completed"
+
+# Final stage
+FROM --platform=linux/arm64 ubuntu:22.04 AS final
+RUN apt-get update && apt-get install -y libgomp1 && rm -rf /var/lib/apt/lists/*
+COPY --from=ffmpeg-minimal /opt/ffmpeg/bin/* /usr/local/bin/
+RUN ffmpeg -version
+WORKDIR /workspace
+ENTRYPOINT ["ffmpeg"] 

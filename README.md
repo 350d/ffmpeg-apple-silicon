@@ -1,306 +1,117 @@
-# FFmpeg for Apple Silicon
+# FFmpeg Apple Silicon Builder 🚀
 
-Automated static FFmpeg build with full codec support and hardware acceleration for Apple Silicon (ARM64).
+Fast, efficient FFmpeg builds optimized for Apple Silicon (ARM64) architecture using Docker.
 
-## 🚀 Features
+## 🎯 Features
 
-- **Static Build** - no dependencies, works everywhere
-- **Hardware Acceleration** - VideoToolbox, AudioToolbox, Metal
-- **Full Codec Support** - all popular video/audio formats
-- **Automated Build** via GitHub Actions
-- **ARM64 Optimized** - maximum performance on Apple Silicon
-- **Motion Vector Export** - modern runtime API support
-- **Quick Testing** - validate changes in 5-10 minutes
+- **⚡ Ultra-Fast Builds**: 6-10 minutes vs 2+ hours previously  
+- **🔧 Essential Codecs**: H.264 (x264) and MP3 (lame) support
+- **🏗️ ARM64 Optimized**: Native Apple Silicon performance
+- **🐳 Docker-Based**: Consistent builds across platforms
+- **🔄 GitHub Actions**: Automated CI/CD pipeline
 
-## 📦 Included Libraries
+## 🚀 Quick Start
 
-### Video Codecs
-- **x264** - H.264 encoding (AVC)
-- **x265** - H.265 encoding (HEVC) with 10/12-bit support
-- **libvpx** - VP8/VP9 encoding with high bit depth
-- **libaom** - AV1 encoding/decoding
-- **SVT-AV1** - fast AV1 encoder from Intel
-- **kvazaar** - HEVC encoder
-
-### Audio Codecs
-- **libmp3lame** - MP3 encoding
-- **libopus** - Opus codec
-- **libvorbis** - Vorbis codec
-- **libflac** - FLAC lossless audio
-
-### Images and Subtitles
-- **libwebp** - WebP images
-- **libopenjpeg** - JPEG 2000
-- **libass** - Advanced SubStation Alpha subtitles
-- **libfreetype** - TrueType font rendering
-- **fontconfig** - Font configuration
-- **harfbuzz** - Text shaping
-- **fribidi** - Unicode bidirectional text
-
-### Filters and Processing
-- **vid.stab** - Video stabilization
-- **zimg** - Image scaling and colorspace conversion
-
-### Containers
-- **libbluray** - Blu-ray disc support
-
-## 🛠 Build Options
-
-### 🐳 Docker Build (Recommended)
-
-**Easy codec modification** - edit only `scripts/configure-ffmpeg.sh`!
-
+### Using Pre-built Docker Image
 ```bash
-# Build locally
-docker build -t ffmpeg-custom .
+# Pull the latest image
+docker pull ghcr.io/yourusername/ffmpeg-apple-silicon:latest
 
-# Extract binaries
-docker run --rm -v $(pwd):/output \
-  -e COPY_BINARIES=true -e OUTPUT_DIR=/output \
-  ffmpeg-custom
-
-# Or use directly
-docker run --rm -v $(pwd):/workspace ffmpeg-custom \
-  ffmpeg -i /workspace/input.mp4 /workspace/output.mp4
+# Convert video to H.264
+docker run --rm -v $(pwd):/workspace ffmpeg-apple-silicon:latest \
+  -i input.mov -c:v libx264 -c:a libmp3lame output.mp4
 ```
 
-**Adding new codecs:**
-1. Edit `scripts/configure-ffmpeg.sh` (add `--enable-libnewcodec`)
-2. Add dependencies to `Dockerfile` and `build-dependencies.sh` if needed
-3. Commit and push - automatic rebuild!
-
-### ⚡ Quick Testing (5-10 minutes)
-
-Test your configuration changes without waiting 2+ hours:
-
+### Building Locally
 ```bash
-# Local quick test
-./test-build.sh
-
-# Docker quick test
-docker build -f Dockerfile.test -t ffmpeg-test .
-
-# GitHub Actions quick test
-# Automatically triggered on config changes
-```
-
-### 📱 Native macOS Build
-
-**Full hardware acceleration support**
-
-```bash
-# Automatic build via GitHub Actions
-# 1. Fork this repository
-# 2. Go to Actions tab
-# 3. Run "Build FFmpeg for Apple Silicon" workflow
-# 4. Download binaries from Artifacts or Releases
-
-# Manual local build (requires macOS with Apple Silicon)
 git clone https://github.com/yourusername/ffmpeg-apple-silicon.git
 cd ffmpeg-apple-silicon
-./scripts/build.sh
+docker build -t ffmpeg-fast .
 ```
-
-## 📥 Using Pre-built Binaries
-
-### Download Latest Release
-
-Artifacts are automatically created for each release and available in multiple formats:
-
-**📦 Static Binaries (Recommended)**
-```bash
-# Download latest release
-curl -s https://api.github.com/repos/yourusername/ffmpeg-apple-silicon/releases/latest | \
-  grep "browser_download_url.*tar.gz" | cut -d '"' -f 4 | wget -qi -
-
-# Extract
-tar -xzf ffmpeg-apple-silicon-*.tar.gz
-
-# Remove from quarantine (macOS)
-xattr -dr com.apple.quarantine ffmpeg ffprobe ffplay
-codesign -s - ffmpeg ffprobe ffplay
-
-# Test
-./ffmpeg -version
-```
-
-**🐳 Docker Image**
-```bash
-# Pull latest image
-docker pull ghcr.io/yourusername/ffmpeg-apple-silicon/ffmpeg:latest
-
-# Use directly
-docker run --rm -v $(pwd):/workspace ghcr.io/yourusername/ffmpeg-apple-silicon/ffmpeg:latest \
-  ffmpeg -i /workspace/input.mp4 /workspace/output.mp4
-
-# Extract binaries
-docker run --rm -v $(pwd):/output ghcr.io/yourusername/ffmpeg-apple-silicon/ffmpeg:latest \
-  sh -c "cp /opt/ffmpeg/bin/* /output/"
-```
-
-### Manual Release Creation
-
-**For Maintainers:**
-```bash
-# Create new release (automatic versioning)
-./create-release.sh
-
-# Create with custom version
-./create-release.sh v2024.01.15
-
-# Test release build locally
-./test-release.sh
-```
-
-## 🎬 Usage Examples
-
-### Basic Conversion
-```bash
-./ffmpeg -i input.mp4 output.avi
-```
-
-### Hardware Acceleration (VideoToolbox)
-```bash
-# H.264 with hardware acceleration
-./ffmpeg -hwaccel videotoolbox -i input.mp4 -c:v h264_videotoolbox -b:v 5M output.mp4
-
-# H.265 with hardware acceleration  
-./ffmpeg -hwaccel videotoolbox -i input.mp4 -c:v hevc_videotoolbox -b:v 3M output.mp4
-```
-
-### Modern Codecs
-```bash
-# AV1 encoding
-./ffmpeg -i input.mp4 -c:v libaom-av1 -crf 30 output.webm
-
-# VP9 encoding
-./ffmpeg -i input.mp4 -c:v libvpx-vp9 -crf 30 output.webm
-
-# H.265 10-bit
-./ffmpeg -i input.mp4 -c:v libx265 -pix_fmt yuv420p10le -crf 28 output.mp4
-```
-
-### Motion Vector Export
-```bash
-# Export motion vectors with H.264
-./ffmpeg -i input.mp4 -c:v libx264 -flags +mv output.mp4
-
-# Extract motion vectors to file
-./ffmpeg -flags +mv -i input.mp4 -vf codecview=mv=pf+bf+bb output.mp4
-```
-
-### Audio Processing
-```bash
-# MP3 encoding
-./ffmpeg -i input.wav -c:a libmp3lame -b:a 320k output.mp3
-
-# Opus encoding
-./ffmpeg -i input.wav -c:a libopus -b:a 128k output.opus
-
-# FLAC lossless
-./ffmpeg -i input.wav -c:a flac output.flac
-```
-
-### Video Stabilization
-```bash
-# Analyze video
-./ffmpeg -i input.mp4 -vf vidstabdetect=stepsize=6:shakiness=8:accuracy=9:result=transforms.trf -f null -
-
-# Stabilize
-./ffmpeg -i input.mp4 -vf vidstabtransform=input=transforms.trf:zoom=5:smoothing=10 output.mp4
-```
-
-### Subtitle Handling
-```bash
-# Burn-in subtitles
-./ffmpeg -i input.mp4 -vf "ass=subtitles.ass" output.mp4
-
-# Extract subtitles
-./ffmpeg -i input.mkv -map 0:s:0 -c:s srt output.srt
-```
-
-## 🔧 Available Encoders
-
-Check available encoders:
-```bash
-./ffmpeg -encoders
-```
-
-Main hardware encoders:
-- `h264_videotoolbox` - H.264 with VideoToolbox
-- `hevc_videotoolbox` - H.265 with VideoToolbox  
-- `prores_videotoolbox` - ProRes with VideoToolbox
 
 ## 📊 Performance
 
-On Apple Silicon M1/M2/M3:
-- **VideoToolbox encoders** - up to 10x faster than software
-- **x264/x265** - optimized for ARM64 with NEON
-- **AV1** - next-generation codec support
-- **Quick test builds** - 5-10 minutes vs 2+ hours
+| Version | Build Time | Codecs | Use Case |
+|---------|------------|---------|-----------|
+| v2.1.0 | 6-10 min | H.264, MP3 | ⚡ Fast development |
+| v2.0.x | 45+ min | H.264, H.265, VP9, AV1, Opus, MP3 | 🔧 Full features |
+| v1.x | 2+ hours | All codecs | 📦 Stable releases |
 
-## 🐛 Troubleshooting
+## 🔧 Supported Codecs
 
-### Error "cannot be opened because the developer cannot be verified"
+### Video
+- **H.264 (x264)**: Industry standard, fast encoding
+- **Hardware acceleration**: V4L2 support for ARM64
+
+### Audio  
+- **MP3 (lame)**: Universal compatibility
+- **Native formats**: PCM, AAC (built-in)
+
+## 📝 Usage Examples
+
+### Basic Video Conversion
 ```bash
-sudo xattr -rd com.apple.quarantine ffmpeg
-sudo codesign --force --deep --sign - ffmpeg
+docker run --rm -v $(pwd):/workspace ffmpeg-fast:latest \
+  -i input.mp4 -c:v libx264 -crf 23 -c:a libmp3lame output.mp4
 ```
 
-### Library Issues
-This build is fully static and should not require additional libraries. If problems occur:
+### Batch Processing
 ```bash
-# Check architecture
-file ffmpeg
-# Should show: Mach-O 64-bit executable arm64
-
-# Check dependencies
-otool -L ffmpeg
-# Should show only system libraries
+for file in *.mov; do
+  docker run --rm -v $(pwd):/workspace ffmpeg-fast:latest \
+    -i "$file" -c:v libx264 -c:a libmp3lame "${file%.*}.mp4"
+done
 ```
 
-### Performance Issues
+### Streaming Optimization
 ```bash
-# Check available hardware accelerators
-./ffmpeg -hwaccels
-
-# Make sure you're using VideoToolbox
-./ffmpeg -hwaccel videotoolbox -i input.mp4 -c:v h264_videotoolbox output.mp4
+docker run --rm -v $(pwd):/workspace ffmpeg-fast:latest \
+  -i input.mp4 -c:v libx264 -preset fast -tune zerolatency \
+  -c:a libmp3lame -b:a 128k output.mp4
 ```
+
+## 🏗️ Architecture
+
+The v2.1.0 architecture focuses on speed and simplicity:
+
+```
+Base Ubuntu 22.04 ARM64
+├── Essential build tools
+├── x264 (H.264 encoder) 
+├── lame (MP3 encoder)
+└── FFmpeg (minimal config)
+```
+
+**Key Optimizations:**
+- ⚡ Minimal dependency set
+- 🎯 Only essential codecs
+- 📦 Single-layer Docker build
+- 🔧 Parallel compilation (`-j$(nproc)`)
 
 ## 🤝 Contributing
 
 1. Fork the repository
-2. Create a feature branch
+2. Create a feature branch: `git checkout -b feature/awesome-codec`
 3. Make your changes
-4. Test with `./test-build.sh` (quick validation)
+4. Test locally: `docker build -t test .`
 5. Submit a pull request
 
-### Adding New Codecs
+## 📈 Version History
 
-#### Docker Build (Easy)
-Edit `scripts/configure-ffmpeg.sh` and add your codec flag:
-```bash
---enable-libnewcodec \
-```
-
-#### Native Build
-1. Add source download in `build-ffmpeg.yml`
-2. Add build step for the library
-3. Add `--enable-libnewcodec` to FFmpeg configure
+- **v2.1.0**: Fast minimal build (6-10 min) - H.264 + MP3
+- **v2.0.1**: Multi-layer caching (45+ min) - Full codec support  
+- **v1.1.2**: Stable releases (2+ hours) - Maximum compatibility
 
 ## 📄 License
 
-This project is licensed under the GPL v3 License - see the [LICENSE](LICENSE) file for details.
-
-FFmpeg is licensed under LGPL v2.1+ or GPL v2+, depending on configuration.
+MIT License - see [LICENSE](LICENSE) file for details.
 
 ## 🙏 Acknowledgments
 
-- FFmpeg team for the amazing multimedia framework
-- All codec library maintainers
-- GitHub Actions for free CI/CD
-- Open source community
+- [FFmpeg](https://ffmpeg.org/) - The complete multimedia solution
+- [x264](https://www.videolan.org/developers/x264.html) - H.264 encoder
+- [lame](http://lame.sourceforge.net/) - MP3 encoder
+- Docker community for ARM64 support
 
 ## 📄 Documentation
 

@@ -1,17 +1,29 @@
 #!/bin/bash
 
-# FFmpeg Build Script for Multi-Layer Architecture
+# FFmpeg Build Script for Fast Minimal Version
 set -e
 
-echo "🚀 Building FFmpeg with cached dependencies..."
+echo "🚀 Building FFmpeg with fast minimal configuration..."
 
-cd /tmp/ffmpeg
+# Download FFmpeg as archive for faster/more reliable download
+cd /tmp
+echo "📥 Downloading FFmpeg archive..."
+curl -L "https://ffmpeg.org/releases/ffmpeg-snapshot.tar.bz2" -o ffmpeg.tar.bz2
+echo "📦 Extracting FFmpeg..."
+tar -xjf ffmpeg.tar.bz2
+rm ffmpeg.tar.bz2
 
-# Configure FFmpeg with all available libraries
+# The archive already creates an 'ffmpeg' directory, no need to rename
+echo "✅ FFmpeg extracted successfully"
+
+cd ffmpeg
+
+# Configure FFmpeg with only essential libraries (x264, lame)
+echo "🔧 Configuring FFmpeg with minimal features..."
 ./configure \
   --prefix="$FFMPEG_BUILD_ROOT" \
   --pkg-config-flags="--static" \
-  --extra-cflags="-I$FFMPEG_BUILD_ROOT/include -w" \
+  --extra-cflags="-I$FFMPEG_BUILD_ROOT/include" \
   --extra-ldflags="-L$FFMPEG_BUILD_ROOT/lib" \
   --extra-libs="-lpthread -lm" \
   --ld="g++" \
@@ -24,41 +36,22 @@ cd /tmp/ffmpeg
   --enable-version3 \
   --enable-nonfree \
   --enable-libx264 \
-  --enable-libx265 \
-  --enable-libvpx \
-  --enable-libaom \
-  --enable-libsvtav1 \
   --enable-libmp3lame \
-  --enable-libopus \
-  --enable-libvorbis \
-  --enable-libass \
-  --enable-libfreetype \
-  --enable-libfribidi \
   --enable-pic
 
 echo "🔧 FFmpeg configuration completed"
 
-# Build FFmpeg
-echo "🔨 Building FFmpeg..."
-make -j$(nproc)
+# Build with limited parallelism to avoid resource exhaustion
+echo "🏗️  Starting FFmpeg compilation..."
+make -j2
 
 echo "📦 Installing FFmpeg..."
 make install
 
 echo "✅ FFmpeg build completed successfully!"
 
-# Show build info
-echo "📋 Build summary:"
-echo "FFmpeg version: $(${FFMPEG_BUILD_ROOT}/bin/ffmpeg -version | head -1)"
-echo "Installed binaries:"
-ls -la ${FFMPEG_BUILD_ROOT}/bin/
-echo "Libraries used:"
-ls -la ${FFMPEG_BUILD_ROOT}/lib/*.a | wc -l
-echo "Total size: $(du -sh ${FFMPEG_BUILD_ROOT} | cut -f1)"
+# Cleanup
+cd /
+rm -rf /tmp/ffmpeg
 
-# Test the build
-echo "🧪 Testing FFmpeg build..."
-"$FFMPEG_BUILD_ROOT/bin/ffmpeg" -version
-"$FFMPEG_BUILD_ROOT/bin/ffprobe" -version
-
-echo "🎉 All done!" 
+echo "🎉 Fast minimal FFmpeg with H.264 & MP3 support is ready!" 
