@@ -1,18 +1,19 @@
-name: Build FFmpeg for Apple Silicon
+name: Build FFmpeg for Apple Silicon - DISABLED
 
 on:
-  push:
-    tags:
-      - 'v*'
-  pull_request:
-    branches: [ main ]
+  # COMPLETELY DISABLED - replaced by build-ffmpeg-final.yml
   workflow_dispatch:
+    inputs:
+      force_enable:
+        description: 'This workflow is disabled'
+        required: true
+        default: 'disabled'
 
 jobs:
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 60  # Increased for first build with caching
-    if: false  # Disabled - using new clean workflow
+    if: false  # COMPLETELY DISABLED
     
     steps:
     - name: Checkout repository
