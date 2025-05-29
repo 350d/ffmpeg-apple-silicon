@@ -1,0 +1,54 @@
+name: Build FFmpeg v2.3.1 (Clean Build)
+
+on:
+  push:
+    tags:
+      - 'v2.3.1'
+      - 'v2.3.*'
+  workflow_dispatch:
+
+jobs:
+  build-clean:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Verify Dockerfile content
+      run: |
+        echo "🔍 Checking Dockerfile content..."
+        head -5 Dockerfile
+        echo "---"
+        grep -n "📦 Downloading dependencies" Dockerfile || echo "❌ New Dockerfile format not found!"
+        grep -n "build-dependencies.sh" Dockerfile && echo "❌ Old format detected!" || echo "✅ No old format"
+      
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+      with:
+        platforms: linux/arm64
+        
+    - name: Build with completely clean cache
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        file: ./Dockerfile
+        platforms: linux/arm64
+        push: false
+        load: true
+        build-args: |
+          TARGETPLATFORM=linux/arm64
+        tags: |
+          ffmpeg-clean:latest
+          ffmpeg-clean:${{ github.ref_name }}
+        cache-from: type=gha,scope=clean-v2.3.1
+        cache-to: type=gha,mode=max,scope=clean-v2.3.1
+        no-cache: false
+        outputs: type=docker
+        
+    - name: Test FFmpeg binary
+      run: |
+        echo "🧪 Testing FFmpeg binary..."
+        docker run --rm ffmpeg-clean:latest -version
+        echo "✅ FFmpeg binary test completed" 
