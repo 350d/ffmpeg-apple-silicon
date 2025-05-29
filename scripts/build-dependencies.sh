@@ -114,7 +114,7 @@ build_lib "libvorbis" "libvorbis-*" "--disable-shared --enable-static --with-ogg
 build_lib "FLAC" "flac-*" "--disable-shared --enable-static --disable-doxygen-docs --disable-xmms-plugin"
 
 # Video codecs
-build_lib "x264" "x264-ff620d0c" "--disable-shared --enable-static --enable-pic --disable-cli --disable-avs --disable-swscale --disable-lavf --disable-ffms"
+build_lib "x264" "x264-85b5ccea" "--disable-shared --enable-static --enable-pic --disable-cli --disable-avs --disable-swscale --disable-lavf --disable-ffms"
 
 # x265 (special CMake handling)
 progress "Building x265..."

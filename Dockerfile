@@ -68,7 +68,7 @@ RUN curl -fL "https://downloads.sourceforge.net/project/lame/lame/3.100/lame-3.1
 
 # Video codecs (cacheable layer)
 # Use stable releases instead of latest Git to improve Docker layer caching
-RUN curl -fL "https://code.videolan.org/videolan/x264/-/archive/ff620d0c/x264-ff620d0c.tar.gz" -o x264.tar.gz && \
+RUN curl -fL "https://code.videolan.org/videolan/x264/-/archive/85b5ccea/x264-85b5ccea.tar.gz" -o x264.tar.gz && \
     curl -fL "https://github.com/ShiftMediaProject/x265/archive/refs/tags/4.0.tar.gz" -o x265.tar.gz && \
     curl -fL "https://github.com/webmproject/libvpx/archive/refs/tags/v1.15.1.tar.gz" -o libvpx.tar.gz && \
     curl -fL "https://aomedia.googlesource.com/aom/+archive/refs/tags/v3.11.0.tar.gz" -o aom.tar.gz && \
