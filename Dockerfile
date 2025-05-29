@@ -151,7 +151,7 @@ RUN git clone --depth 1 https://git.ffmpeg.org/ffmpeg.git /tmp/ffmpeg \
 # FINAL STAGE - Copy only binaries
 # ================================================================
 
-FROM ubuntu:22.04 AS final
+FROM --platform=linux/arm64 ubuntu:22.04 AS final
 RUN apt-get update && apt-get install -y \
     libgomp1 \
     && rm -rf /var/lib/apt/lists/*

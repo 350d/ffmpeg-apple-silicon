@@ -24,7 +24,7 @@ ENV PKG_CONFIG_PATH="$FFMPEG_BUILD_ROOT/lib/pkgconfig"
 ENV PATH="$FFMPEG_BUILD_ROOT/bin:$PATH"
 RUN mkdir -p "$FFMPEG_BUILD_ROOT"
 
-# Test with just x264 to verify concept
+# Test x264 first
 FROM base AS x264
 RUN git clone --depth 1 https://code.videolan.org/videolan/x264.git /tmp/x264 \
     && cd /tmp/x264 \
@@ -33,18 +33,18 @@ RUN git clone --depth 1 https://code.videolan.org/videolan/x264.git /tmp/x264 \
     && make install \
     && echo "✅ x264 completed"
 
-# Test second layer - libmp3lame
-FROM x264 AS lame
-RUN curl -L "https://downloads.sourceforge.net/project/lame/lame/3.100/lame-3.100.tar.gz" -o lame.tar.gz \
-    && tar -xzf lame.tar.gz && rm lame.tar.gz \
-    && cd lame-3.100 \
-    && ./configure --prefix="$FFMPEG_BUILD_ROOT" --disable-shared --enable-static \
-    && make -j$(nproc) \
-    && make install \
-    && echo "✅ lame completed"
-
-# Final test stage
-FROM lame AS test
-RUN echo "🎉 Test dependencies built successfully!" \
-    && ls -la "$FFMPEG_BUILD_ROOT/lib" \
-    && echo "Libraries: $(ls -1 $FFMPEG_BUILD_ROOT/lib/*.a | wc -l)" 
+# Test x265 with more diagnostics
+FROM x264 AS x265-debug
+RUN echo "🔍 Checking x265 build..." \
+    && git clone --depth 1 https://bitbucket.org/multicoreware/x265_git.git /tmp/x265 \
+    && cd /tmp/x265 \
+    && echo "📂 x265 directory contents:" \
+    && ls -la \
+    && echo "📂 build directory contents:" \
+    && ls -la build/ \
+    && cd build/linux \
+    && echo "🔧 Running cmake configure..." \
+    && cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX="$FFMPEG_BUILD_ROOT" -DENABLE_SHARED=OFF ../../source \
+    && echo "🔨 Running make with verbose output..." \
+    && make -j$(nproc) VERBOSE=1 2>&1 | head -50 \
+    && echo "✅ x265 build completed" 
