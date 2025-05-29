@@ -58,10 +58,27 @@ build_lib() {
     
     echo "🔧 Debug: Attempting to build $name with pattern '$source_dir'"
     echo "🔧 Debug: Looking for directories matching: $SOURCE_DIR/$source_dir"
-    ls -la "$SOURCE_DIR"/$source_dir 2>/dev/null || echo "🔧 Debug: No directories found for pattern $source_dir"
+    
+    # Resolve wildcard pattern to actual directory name
+    local actual_dir
+    if [[ "$source_dir" == *"*"* ]]; then
+        # Handle wildcard patterns
+        actual_dir=$(find "$SOURCE_DIR" -maxdepth 1 -type d -name "$source_dir" | head -1)
+        if [[ -z "$actual_dir" ]]; then
+            echo "❌ Error: No directory found matching pattern '$source_dir'"
+            return 1
+        fi
+        actual_dir=$(basename "$actual_dir")
+        echo "🔧 Debug: Resolved '$source_dir' to '$actual_dir'"
+    else
+        # Handle exact directory names
+        actual_dir="$source_dir"
+    fi
+    
+    ls -la "$SOURCE_DIR"/$actual_dir 2>/dev/null || echo "🔧 Debug: No directories found for pattern $actual_dir"
     
     progress "Building $name..."
-    cd "$SOURCE_DIR/$source_dir"
+    cd "$SOURCE_DIR/$actual_dir"
     
     if [[ "$cmake_build" == "true" ]]; then
         # CMake build
