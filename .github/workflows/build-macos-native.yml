@@ -46,6 +46,18 @@ jobs:
         # Install codec libraries
         brew install x264 x265 lame opus libvorbis libvpx webp fdk-aac freetype fontconfig
         
+        # Debug: Check installed packages and paths
+        echo "🔍 Checking installed packages..."
+        brew list --versions lame x264 x265 opus libvorbis
+        
+        echo "🔍 PKG_CONFIG_PATH setup..."
+        export PKG_CONFIG_PATH="/opt/homebrew/lib/pkgconfig:$PKG_CONFIG_PATH"
+        echo "PKG_CONFIG_PATH: $PKG_CONFIG_PATH"
+        
+        echo "🔍 Testing pkg-config..."
+        pkg-config --exists --print-errors mp3lame && echo "✅ mp3lame found" || echo "❌ mp3lame not found"
+        pkg-config --exists --print-errors x264 && echo "✅ x264 found" || echo "❌ x264 not found"
+        
         echo "✅ Build dependencies installed"
         
     - name: Download FFmpeg source
@@ -64,6 +76,13 @@ jobs:
     - name: Configure FFmpeg for Apple Silicon
       working-directory: ffmpeg-src
       run: |
+        # Set up environment for Homebrew libraries
+        export PKG_CONFIG_PATH="/opt/homebrew/lib/pkgconfig:$PKG_CONFIG_PATH"
+        export PATH="/opt/homebrew/bin:$PATH"
+        
+        echo "🔍 Final library check before configure..."
+        pkg-config --exists --print-errors mp3lame && echo "✅ mp3lame ready" || echo "❌ mp3lame missing"
+        
         ./configure \
           --prefix=/usr/local \
           --arch=arm64 \
