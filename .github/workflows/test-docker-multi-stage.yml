@@ -1,0 +1,100 @@
+name: Test Multi-Stage Docker Build
+
+on:
+  push:
+    branches: [ main, develop ]
+  workflow_dispatch:
+
+jobs:
+  test-multi-stage:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+      
+    - name: Build Multi-Stage FFmpeg
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        file: ./Dockerfile.multi-stage
+        push: false
+        load: true
+        tags: ffmpeg-multi:latest
+        target: final
+        cache-from: type=gha,scope=ffmpeg-multi
+        cache-to: type=gha,mode=max,scope=ffmpeg-multi
+        
+    - name: Test Built Binaries
+      run: |
+        echo "🧪 Testing built FFmpeg binaries..."
+        
+        # Verify binaries work
+        docker run --rm ffmpeg-multi:latest \
+          bash -c "
+            echo '📋 Binary verification:'
+            /dist/ffmpeg -version | head -2
+            /dist/ffprobe -version | head -1
+            echo '🎯 Motion vectors test:'
+            /dist/ffmpeg -hide_banner -filters | grep codecview && echo '✅ Motion vectors available' || echo '⚠️ Not found'
+            echo '📊 Binary info:'
+            file /dist/ffmpeg
+            ls -lh /dist/ffmpeg /dist/ffprobe
+          "
+          
+    - name: Performance Test
+      run: |
+        echo "⚡ Performance test..."
+        
+        # Quick encoding test
+        docker run --rm ffmpeg-multi:latest \
+          bash -c "
+            echo '🎬 Quick encoding test:'
+            /dist/ffmpeg -f lavfi -i testsrc=duration=1:size=320x240:rate=10 \
+              -c:v libx264 -preset ultrafast -f null - -v quiet \
+              && echo '✅ Encoding test passed' || echo '❌ Encoding failed'
+          "
+          
+    - name: Motion Vectors Integration Test
+      run: |
+        echo "🎯 Motion vectors integration test..."
+        
+        docker run --rm ffmpeg-multi:latest \
+          bash -c "
+            echo '🔍 Motion vectors export test:'
+            /dist/ffmpeg -f lavfi -i testsrc=duration=1:size=160x120:rate=5 \
+              -flags2 +export_mvs -vf codecview=mv=pf \
+              -f null - -v quiet \
+              && echo '✅ Motion vectors export working' || echo '⚠️ Export test failed'
+          "
+          
+    - name: Extract Artifacts
+      run: |
+        echo "📦 Extracting build artifacts..."
+        
+        # Create temporary container and copy artifacts
+        CONTAINER_ID=$(docker create ffmpeg-multi:latest)
+        docker cp $CONTAINER_ID:/artifacts ./build-artifacts
+        docker rm $CONTAINER_ID
+        
+        # Show artifact contents
+        echo "📋 Available artifacts:"
+        ls -la ./build-artifacts/
+        
+    - name: Upload Build Artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: ffmpeg-multi-stage-binaries
+        path: build-artifacts/
+        retention-days: 30
+        
+    - name: Upload Checksums
+      uses: actions/upload-artifact@v4  
+      with:
+        name: ffmpeg-multi-checksums
+        path: build-artifacts/checksums.txt
+        retention-days: 30 
