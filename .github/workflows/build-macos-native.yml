@@ -82,9 +82,14 @@ jobs:
           LAME_LIBS=""
         fi
         
+        # Debug: Test basic compilation first
+        echo "Testing basic compilation..."
+        echo 'int main(){return 0;}' > test.c
+        gcc test.c -o test && echo "✅ Basic gcc works" || echo "❌ Basic gcc fails"
+        rm -f test.c test
+        
         ./configure \
           --prefix=/usr/local \
-          --arch=arm64 \
           --target-os=darwin \
           --enable-gpl \
           --enable-version3 \
@@ -105,8 +110,8 @@ jobs:
           --enable-avfilter \
           --disable-shared \
           --enable-static \
-          --extra-cflags="-arch arm64 $LAME_CFLAGS -DGL_SILENCE_DEPRECATION -Wno-deprecated-declarations" \
-          --extra-ldflags="-arch arm64 $LAME_LIBS"
+          --extra-cflags="$LAME_CFLAGS -DGL_SILENCE_DEPRECATION -Wno-deprecated-declarations" \
+          --extra-ldflags="$LAME_LIBS"
         echo "✅ FFmpeg configured for Apple Silicon"
         
     - name: Build FFmpeg
