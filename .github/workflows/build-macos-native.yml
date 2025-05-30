@@ -2,8 +2,9 @@ name: Build Native FFmpeg for Apple Silicon
 
 on:
   push:
+    branches: [ main ]  # For development testing
     tags:
-      - 'v3.*'  # New major version for correct approach
+      - 'v3.*'  # For releases
   workflow_dispatch:
 
 jobs:
