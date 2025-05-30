@@ -50,8 +50,18 @@ jobs:
         echo "🔍 Checking installed packages..."
         brew list --versions lame x264 x265 opus libvorbis
         
+        echo "🔍 Homebrew prefix and paths..."
+        HOMEBREW_PREFIX=$(brew --prefix)
+        echo "Homebrew prefix: $HOMEBREW_PREFIX"
+        
+        echo "🔍 Looking for mp3lame files..."
+        find $HOMEBREW_PREFIX -name "*lame*" -type f 2>/dev/null | head -10
+        find $HOMEBREW_PREFIX -name "*.pc" | grep -i lame || echo "No lame.pc files found"
+        ls -la $HOMEBREW_PREFIX/lib/libmp3lame* 2>/dev/null || echo "No libmp3lame files found"
+        ls -la $HOMEBREW_PREFIX/include/lame/ 2>/dev/null || echo "No lame headers found"
+        
         echo "🔍 PKG_CONFIG_PATH setup..."
-        export PKG_CONFIG_PATH="/opt/homebrew/lib/pkgconfig:$PKG_CONFIG_PATH"
+        export PKG_CONFIG_PATH="$HOMEBREW_PREFIX/lib/pkgconfig:$PKG_CONFIG_PATH"
         echo "PKG_CONFIG_PATH: $PKG_CONFIG_PATH"
         
         echo "🔍 Testing pkg-config..."
@@ -77,11 +87,23 @@ jobs:
       working-directory: ffmpeg-src
       run: |
         # Set up environment for Homebrew libraries
-        export PKG_CONFIG_PATH="/opt/homebrew/lib/pkgconfig:$PKG_CONFIG_PATH"
-        export PATH="/opt/homebrew/bin:$PATH"
+        HOMEBREW_PREFIX=$(brew --prefix)
+        export PKG_CONFIG_PATH="$HOMEBREW_PREFIX/lib/pkgconfig:$PKG_CONFIG_PATH"
+        export PATH="$HOMEBREW_PREFIX/bin:$PATH"
         
         echo "🔍 Final library check before configure..."
         pkg-config --exists --print-errors mp3lame && echo "✅ mp3lame ready" || echo "❌ mp3lame missing"
+        
+        # Check if mp3lame library exists manually
+        if [ -f "$HOMEBREW_PREFIX/lib/libmp3lame.dylib" ]; then
+          echo "✅ Found libmp3lame.dylib manually"
+          LAME_CFLAGS="-I$HOMEBREW_PREFIX/include"
+          LAME_LIBS="-L$HOMEBREW_PREFIX/lib -lmp3lame"
+        else
+          echo "❌ libmp3lame.dylib not found"
+          LAME_CFLAGS=""
+          LAME_LIBS=""
+        fi
         
         ./configure \
           --prefix=/usr/local \
@@ -106,8 +128,8 @@ jobs:
           --enable-avfilter \
           --disable-shared \
           --enable-static \
-          --extra-cflags="-arch arm64" \
-          --extra-ldflags="-arch arm64"
+          --extra-cflags="-arch arm64 $LAME_CFLAGS" \
+          --extra-ldflags="-arch arm64 $LAME_LIBS"
         echo "✅ FFmpeg configured for Apple Silicon"
         
     - name: Build FFmpeg
