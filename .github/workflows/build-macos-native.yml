@@ -39,12 +39,15 @@ jobs:
       
     - name: Install dependencies
       run: |
-        # Update brew and install build dependencies
-        brew update
-        brew install pkg-config nasm yasm cmake autoconf automake libtool
+        # Update brew and install build dependencies (quiet mode)
+        brew update > /dev/null 2>&1
+        brew install --quiet pkg-config nasm yasm cmake autoconf automake libtool
         
-        # Install codec libraries
-        brew install x264 x265 lame opus libvorbis libvpx webp fdk-aac freetype fontconfig
+        # Install codec libraries (quiet mode)
+        brew install --quiet x264 x265 lame opus libvorbis libvpx webp fdk-aac freetype fontconfig
+        
+        # Link any unlinked packages (suppress output)
+        brew link --overwrite nasm yasm autoconf automake libtool x264 x265 lame opus libvorbis libvpx webp fdk-aac > /dev/null 2>&1 || true
         
         # Basic verification (silent)
         HOMEBREW_PREFIX=$(brew --prefix)
@@ -55,6 +58,7 @@ jobs:
         
     - name: Download FFmpeg source
       run: |
+        set +x  # Disable command echoing
         if [ ! -d "ffmpeg-src" ]; then
           curl -L "https://ffmpeg.org/releases/ffmpeg-snapshot.tar.bz2" -o ffmpeg.tar.bz2
           tar -xjf ffmpeg.tar.bz2
