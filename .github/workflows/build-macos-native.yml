@@ -68,50 +68,35 @@ jobs:
     - name: Configure FFmpeg for Apple Silicon
       working-directory: ffmpeg-src
       run: |
-        # Set up environment for Homebrew libraries
-        HOMEBREW_PREFIX=$(brew --prefix)
-        export PKG_CONFIG_PATH="$HOMEBREW_PREFIX/lib/pkgconfig:$PKG_CONFIG_PATH"
-        export PATH="$HOMEBREW_PREFIX/bin:$PATH"
-        
-        # Check if mp3lame library exists manually
-        if [ -f "$HOMEBREW_PREFIX/lib/libmp3lame.dylib" ]; then
-          LAME_CFLAGS="-I$HOMEBREW_PREFIX/include"
-          LAME_LIBS="-L$HOMEBREW_PREFIX/lib -lmp3lame"
-        else
-          LAME_CFLAGS=""
-          LAME_LIBS=""
-        fi
-        
         # Debug: Test basic compilation first
         echo "Testing basic compilation..."
         echo 'int main(){return 0;}' > test.c
         gcc test.c -o test && echo "✅ Basic gcc works" || echo "❌ Basic gcc fails"
         rm -f test.c test
         
+        echo "Testing minimal FFmpeg configure..."
+        # Try minimal configure first
         ./configure \
           --prefix=/usr/local \
           --target-os=darwin \
-          --enable-gpl \
-          --enable-version3 \
-          --enable-nonfree \
           --enable-videotoolbox \
-          --enable-libx264 \
-          --enable-libx265 \
-          --enable-libmp3lame \
-          --enable-libopus \
-          --enable-libvorbis \
-          --enable-libvpx \
-          --enable-libwebp \
-          --enable-libfdk-aac \
-          --enable-libfreetype \
-          --enable-libfontconfig \
-          --enable-pic \
-          --enable-runtime-cpudetect \
           --enable-avfilter \
           --disable-shared \
-          --enable-static \
-          --extra-cflags="$LAME_CFLAGS -DGL_SILENCE_DEPRECATION -Wno-deprecated-declarations" \
-          --extra-ldflags="$LAME_LIBS"
+          --enable-static
+          
+        if [ $? -eq 0 ]; then
+          echo "✅ Minimal configure succeeded"
+        else
+          echo "❌ Even minimal configure failed, trying with --enable-cross-compile"
+          ./configure \
+            --prefix=/usr/local \
+            --target-os=darwin \
+            --enable-cross-compile \
+            --enable-videotoolbox \
+            --enable-avfilter \
+            --disable-shared \
+            --enable-static
+        fi
         echo "✅ FFmpeg configured for Apple Silicon"
         
     - name: Build FFmpeg
