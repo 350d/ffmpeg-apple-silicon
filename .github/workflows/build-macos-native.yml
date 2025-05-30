@@ -46,34 +46,16 @@ jobs:
         # Install codec libraries
         brew install x264 x265 lame opus libvorbis libvpx webp fdk-aac freetype fontconfig
         
-        # Debug: Check installed packages and paths
-        echo "🔍 Checking installed packages..."
-        brew list --versions lame x264 x265 opus libvorbis
-        
-        echo "🔍 Homebrew prefix and paths..."
+        # Basic verification (silent)
         HOMEBREW_PREFIX=$(brew --prefix)
-        echo "Homebrew prefix: $HOMEBREW_PREFIX"
-        
-        echo "🔍 Looking for mp3lame files..."
-        find $HOMEBREW_PREFIX -name "*lame*" -type f 2>/dev/null | head -10
-        find $HOMEBREW_PREFIX -name "*.pc" | grep -i lame || echo "No lame.pc files found"
-        ls -la $HOMEBREW_PREFIX/lib/libmp3lame* 2>/dev/null || echo "No libmp3lame files found"
-        ls -la $HOMEBREW_PREFIX/include/lame/ 2>/dev/null || echo "No lame headers found"
-        
-        echo "🔍 PKG_CONFIG_PATH setup..."
         export PKG_CONFIG_PATH="$HOMEBREW_PREFIX/lib/pkgconfig:$PKG_CONFIG_PATH"
-        echo "PKG_CONFIG_PATH: $PKG_CONFIG_PATH"
-        
-        echo "🔍 Testing pkg-config..."
-        pkg-config --exists --print-errors mp3lame && echo "✅ mp3lame found" || echo "❌ mp3lame not found"
-        pkg-config --exists --print-errors x264 && echo "✅ x264 found" || echo "❌ x264 not found"
+        pkg-config --exists x264 && pkg-config --exists x265 # Verify key libraries
         
         echo "✅ Build dependencies installed"
         
     - name: Download FFmpeg source
       run: |
         if [ ! -d "ffmpeg-src" ]; then
-          echo "📥 Downloading FFmpeg source..."
           curl -L "https://ffmpeg.org/releases/ffmpeg-snapshot.tar.bz2" -o ffmpeg.tar.bz2
           tar -xjf ffmpeg.tar.bz2
           mv ffmpeg ffmpeg-src
@@ -91,16 +73,11 @@ jobs:
         export PKG_CONFIG_PATH="$HOMEBREW_PREFIX/lib/pkgconfig:$PKG_CONFIG_PATH"
         export PATH="$HOMEBREW_PREFIX/bin:$PATH"
         
-        echo "🔍 Final library check before configure..."
-        pkg-config --exists --print-errors mp3lame && echo "✅ mp3lame ready" || echo "❌ mp3lame missing"
-        
         # Check if mp3lame library exists manually
         if [ -f "$HOMEBREW_PREFIX/lib/libmp3lame.dylib" ]; then
-          echo "✅ Found libmp3lame.dylib manually"
           LAME_CFLAGS="-I$HOMEBREW_PREFIX/include"
           LAME_LIBS="-L$HOMEBREW_PREFIX/lib -lmp3lame"
         else
-          echo "❌ libmp3lame.dylib not found"
           LAME_CFLAGS=""
           LAME_LIBS=""
         fi
@@ -128,41 +105,37 @@ jobs:
           --enable-avfilter \
           --disable-shared \
           --enable-static \
-          --extra-cflags="-arch arm64 $LAME_CFLAGS" \
+          --extra-cflags="-arch arm64 $LAME_CFLAGS -DGL_SILENCE_DEPRECATION -Wno-deprecated-declarations" \
           --extra-ldflags="-arch arm64 $LAME_LIBS"
         echo "✅ FFmpeg configured for Apple Silicon"
         
     - name: Build FFmpeg
       working-directory: ffmpeg-src
       run: |
-        make -j$(sysctl -n hw.ncpu)
+        make -j$(sysctl -n hw.ncpu) 2>/dev/null
         echo "✅ FFmpeg built successfully"
         
     - name: Test built binaries
       working-directory: ffmpeg-src
       run: |
-        echo "🧪 Testing built binaries..."
-        ./ffmpeg -version
-        ./ffprobe -version
-        file ./ffmpeg
-        file ./ffprobe
+        ./ffmpeg -version | head -1
+        ./ffprobe -version | head -1
+        file ./ffmpeg | head -1
         
-        # Test VideoToolbox support
-        ./ffmpeg -hide_banner -encoders | grep videotoolbox || echo "⚠️ VideoToolbox encoders not found"
+        # Test VideoToolbox support (silent)
+        ./ffmpeg -hide_banner -encoders 2>/dev/null | grep -q videotoolbox && echo "✅ VideoToolbox acceleration available"
         
-        # Test motion vectors support
-        echo "🔍 Testing motion vectors support..."
-        ./ffmpeg -hide_banner -filters | grep codecview && echo "✅ Motion vectors filter available" || echo "⚠️ Motion vectors filter not found"
-        ./ffmpeg -hide_banner -filters | grep showinfo && echo "✅ Frame analysis filter available" || echo "⚠️ Frame analysis filter not found"
+        # Test motion vectors support (silent)  
+        ./ffmpeg -hide_banner -filters 2>/dev/null | grep -q codecview && echo "✅ Motion vectors support available"
         
-        echo "✅ Binaries tested successfully"
+        echo "✅ Binary tests completed"
         
     - name: Package binaries
       run: |
         mkdir -p release
         cp ffmpeg-src/ffmpeg release/
         cp ffmpeg-src/ffprobe release/
-        cp ffmpeg-src/ffplay release/ || echo "ℹ️ ffplay not built (OK)"
+        cp ffmpeg-src/ffplay release/ 2>/dev/null || true
         
         cd release
         tar -czf ../ffmpeg-apple-silicon-native-${{ github.ref_name }}.tar.gz *
@@ -171,11 +144,7 @@ jobs:
         # Generate checksums
         shasum -a 256 ffmpeg-apple-silicon-native-${{ github.ref_name }}.tar.gz > checksums.txt
         
-        # Show package info
-        ls -lh ffmpeg-apple-silicon-native-*.tar.gz
-        cat checksums.txt
-        
-        echo "✅ Binaries packaged"
+        echo "✅ Binaries packaged successfully"
         
     - name: Upload artifacts
       uses: actions/upload-artifact@v4
