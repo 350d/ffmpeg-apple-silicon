@@ -64,9 +64,6 @@ jobs:
     - name: Configure FFmpeg for Apple Silicon
       working-directory: ffmpeg-src
       run: |
-        # Clean any previous build
-        make clean || true
-        
         ./configure \
           --prefix=/usr/local \
           --arch=arm64 \
@@ -88,7 +85,6 @@ jobs:
           --enable-pic \
           --enable-runtime-cpudetect \
           --enable-avfilter \
-          --enable-postproc \
           --disable-shared \
           --enable-static \
           --extra-cflags="-arch arm64" \
